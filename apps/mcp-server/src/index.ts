@@ -5,6 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadEnv } from "./lib/env.js";
 import { registerGetReviewRules } from "./tools/get-review-rules.js";
+import { registerGetTeamReviewRules } from "./tools/get-team-review-rules.js";
 
 async function main(): Promise<void> {
   loadEnv();
@@ -12,6 +13,7 @@ async function main(): Promise<void> {
   const server = new McpServer({ name: "devreview", version: "1.0.0" });
 
   registerGetReviewRules(server);
+  registerGetTeamReviewRules(server);
 
   await server.connect(new StdioServerTransport());
   console.error("DevReview MCP server rodando via stdio");
