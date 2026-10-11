@@ -3,9 +3,12 @@
 // No STDIO, stdout é o canal JSON-RPC: logs vão sempre para stderr.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { loadEnv } from "./lib/env.js";
 import { registerGetReviewRules } from "./tools/get-review-rules.js";
 
 async function main(): Promise<void> {
+  loadEnv();
+
   const server = new McpServer({ name: "devreview", version: "1.0.0" });
 
   registerGetReviewRules(server);
