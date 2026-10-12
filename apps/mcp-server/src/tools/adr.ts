@@ -13,7 +13,8 @@ export function registerAdrTools(server: McpServer): void {
       description:
         "Pesquisa os ADRs já aceitos das equipes com base em critérios de pesquisa fornecidos. " +
         "Usar quando uma PR tocar em conceitos arquiteturais (estado de gerenciamento, autenticação, caching, etc.) " +
-        "e você quiser verificar se a equipe já possui ADRs relacionados a esses conceitos.",
+        "e você quiser verificar se a equipe já possui ADRs relacionados a esses conceitos. " +
+        "Cada ADR traz o id: use-o em adr_id nos achados de record_review que se baseiam no ADR.",
       inputSchema: {
         team_id: z
           .string()
@@ -39,7 +40,7 @@ export function registerAdrTools(server: McpServer): void {
 
       const { data, error } = await getSupabase()
         .from("adrs")
-        .select("title, decision, status")
+        .select("id, title, decision, status")
         .eq("team_id", team_id)
         .eq("status", "accepted")
         .or(`title.ilike.%${term}%,decision.ilike.%${term}%`);
