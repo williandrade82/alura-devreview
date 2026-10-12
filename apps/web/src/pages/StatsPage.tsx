@@ -78,6 +78,10 @@ function CriterionRow({ ok, children }: { ok: boolean; children: React.ReactNode
   );
 }
 
+/**
+ * Tela de estatísticas do time no período escolhido: visão geral das revisões, regras e ADRs
+ * mais citados e calibração da recomendação do modelo contra a decisão humana.
+ */
 export function StatsPage() {
   const dispatch = useAppDispatch();
   const teamId = useAppSelector((s) => s.auth.teamId);
@@ -251,6 +255,12 @@ export function StatsPage() {
                     ))}
                   </ul>
                 )}
+                {references.never_triggered_total > references.never_triggered.length && (
+                  <p className="mt-3 text-xs text-gray-500">
+                    e mais {references.never_triggered_total - references.never_triggered.length} regra
+                    {references.never_triggered_total - references.never_triggered.length > 1 ? "s" : ""}
+                  </p>
+                )}
               </div>
             </section>
 
@@ -344,7 +354,7 @@ export function StatsPage() {
                           <TableRow className="border-gray-800 hover:bg-transparent">
                             <TableHead className="text-gray-400">Confiança</TableHead>
                             <TableHead className="text-right text-gray-400">Revisões</TableHead>
-                            <TableHead className="text-right text-gray-400">Decididas</TableHead>
+                            <TableHead className="text-right text-gray-400">Decididas*</TableHead>
                             <TableHead className="text-right text-gray-400">Concordância</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -355,12 +365,15 @@ export function StatsPage() {
                                 {CONFIDENCE_LABEL[c.confidence] ?? c.confidence}
                               </TableCell>
                               <TableCell className="text-right">{c.total}</TableCell>
-                              <TableCell className="text-right">{c.with_human_outcome}</TableCell>
-                              <TableCell className="text-right">{percent(c.agree, c.with_human_outcome)}</TableCell>
+                              <TableCell className="text-right">{c.judged}</TableCell>
+                              <TableCell className="text-right">{percent(c.agree, c.judged)}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
+                      <p className="mt-2 text-xs text-gray-500">
+                        * Só recomendações "aprovar" e "solicitar mudanças" com decisão humana; "apenas comentar" não entra.
+                      </p>
                     </div>
 
                     {calibrationReadiness && (

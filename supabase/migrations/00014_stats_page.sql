@@ -69,7 +69,13 @@ as $$
     join public.review_history h on h.id = f.review_id
     where h.team_id = p_team_id and h.reviewed_at >= p_since
   ),
-  lim as (select greatest(least(p_limit, 50), 1) as n)
+  lim as (select greatest(least(p_limit, 50), 1) as n),
+  silent as (
+    select r.id, r.rule, r.category
+    from public.review_rules r
+    where r.team_id = p_team_id and r.active
+      and not exists (select 1 from found f where f.rule_id = r.id)
+  )
   select jsonb_build_object(
     'rules', (
       select coalesce(jsonb_agg(to_jsonb(x) order by x.total desc, x.rule), '[]'::jsonb)
@@ -106,14 +112,14 @@ as $$
     'never_triggered', (
       select coalesce(jsonb_agg(to_jsonb(x) order by x.category, x.rule), '[]'::jsonb)
       from (
-        select r.id, r.rule, r.category
-        from public.review_rules r
-        where r.team_id = p_team_id and r.active
-          and not exists (select 1 from found f where f.rule_id = r.id)
-        order by r.category, r.rule
+        select s.id, s.rule, s.category
+        from silent s
+        order by s.category, s.rule
         limit 20
       ) x
-    )
+    ),
+    -- Total real: a lista acima é cortada em 20 e a tela avisa quando há mais.
+    'never_triggered_total', (select count(*) from silent)
   );
 $$;
 
@@ -138,6 +144,9 @@ as $$
       injection_suspected,
       outcome_decision,
       outcome_decision in ('approved', 'changes_requested') as decided,
+      -- Só approve/request_changes entram na concordância: "comment" nunca concorda nem discorda.
+      recommendation in ('approve', 'request_changes')
+        and outcome_decision in ('approved', 'changes_requested') as judged,
       (recommendation = 'approve' and outcome_decision = 'approved')
         or (recommendation = 'request_changes' and outcome_decision = 'changes_requested') as agree
     from public.review_history
@@ -182,9 +191,9 @@ as $$
       from (
         select
           confidence,
-          count(*)                       as total,
-          count(*) filter (where decided) as with_human_outcome,
-          count(*) filter (where agree)   as agree
+          count(*)                      as total,
+          count(*) filter (where judged) as judged,
+          count(*) filter (where agree)  as agree
         from r
         group by confidence
       ) c

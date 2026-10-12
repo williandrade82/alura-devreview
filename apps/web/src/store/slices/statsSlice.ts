@@ -32,6 +32,8 @@ export const fetchStats = createAsyncThunk(
 );
 
 interface StatsState {
+  /** Time dos dados carregados: ao trocar de time, os dados do anterior são descartados. */
+  teamId: string | null;
   days: number;
   overview: StatsOverview | null;
   references: ReferenceStats | null;
@@ -43,6 +45,7 @@ interface StatsState {
 }
 
 const initialState: StatsState = {
+  teamId: null,
   days: DEFAULT_STATS_PERIOD,
   overview: null,
   references: null,
@@ -63,6 +66,12 @@ const statsSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchStats.pending, (state, action) => {
+        if (state.teamId !== action.meta.arg.teamId) {
+          state.teamId = action.meta.arg.teamId;
+          state.overview = null;
+          state.references = null;
+          state.calibration = null;
+        }
         state.loading = true;
         state.error = null;
         state.requestId = action.meta.requestId;

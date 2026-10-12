@@ -109,6 +109,8 @@ export interface ReferenceStats {
   rules: { rule_id: string; rule: string | null; total: number; errors: number; dismissed: number }[];
   adrs: { adr_id: string; title: string | null; total: number }[];
   never_triggered: { id: string; rule: string; category: RuleCategory }[];
+  /** Total real de regras que nunca dispararam (a lista acima vem cortada em 20). */
+  never_triggered_total: number;
 }
 
 /** Revisões de uma recomendação por desfecho humano (pending = ainda não sincronizado). */
@@ -132,5 +134,6 @@ export interface RecommendationStats {
     comment_with_outcome: number;
   };
   matrix: Record<Recommendation, OutcomeCounts>;
-  by_confidence: { confidence: string; total: number; with_human_outcome: number; agree: number }[];
+  /** judged = recomendações approve/request_changes já decididas por humanos (base da concordância). */
+  by_confidence: { confidence: string; total: number; judged: number; agree: number }[];
 }
