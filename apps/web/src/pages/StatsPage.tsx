@@ -14,6 +14,10 @@ import { StatCard } from "@/components/shared/StatCard";
 import { CategoryBadge } from "@/components/shared/CategoryBadge";
 import { BarList } from "@/components/stats/BarList";
 import { StackedBar } from "@/components/stats/StackedBar";
+import { SectionTitle } from "@/components/stats/SectionTitle";
+import { EvolutionSection } from "@/components/stats/EvolutionSection";
+import { ThemesSection } from "@/components/stats/ThemesSection";
+import { ReposSection } from "@/components/stats/ReposSection";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -56,15 +60,6 @@ const CONFIDENCE_LABEL: Record<string, string> = {
   unspecified: "Não informada",
 };
 
-function SectionTitle({ id, title, description }: { id: string; title: string; description: string }) {
-  return (
-    <div>
-      <h2 id={id} className="text-base font-semibold text-white">{title}</h2>
-      <p className="mt-0.5 text-sm text-gray-400">{description}</p>
-    </div>
-  );
-}
-
 function CriterionRow({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2 text-sm">
@@ -85,7 +80,8 @@ function CriterionRow({ ok, children }: { ok: boolean; children: React.ReactNode
 export function StatsPage() {
   const dispatch = useAppDispatch();
   const teamId = useAppSelector((s) => s.auth.teamId);
-  const { days, overview, references, calibration, loading, error } = useAppSelector((s) => s.stats);
+  const { days, overview, references, calibration, timeseries, themes, repos, loading, error } =
+    useAppSelector((s) => s.stats);
 
   useEffect(() => {
     if (teamId) dispatch(fetchStats({ teamId, days }));
@@ -138,7 +134,7 @@ export function StatsPage() {
           </p>
         )}
 
-        {!overview || !references || !calibration ? (
+        {!overview || !references || !calibration || !timeseries || !themes || !repos ? (
           !error && <p className="text-sm text-gray-400">Carregando...</p>
         ) : (
           <>
@@ -206,6 +202,12 @@ export function StatsPage() {
               </div>
             </section>
 
+            {/* 2. Evolução no tempo */}
+            <EvolutionSection days={days} series={timeseries} />
+
+            {/* 3. Temas */}
+            <ThemesSection days={days} themes={themes} />
+
             {/* 4. Regras e ADRs */}
             <section className="space-y-4" aria-labelledby="stats-references">
               <SectionTitle
@@ -263,6 +265,9 @@ export function StatsPage() {
                 )}
               </div>
             </section>
+
+            {/* 5. Repositórios */}
+            <ReposSection days={days} repos={repos} />
 
             {/* 6. Calibração do modelo */}
             <section className="space-y-4" aria-labelledby="stats-calibration">

@@ -1,10 +1,19 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { getSupabase } from "@/lib/supabase";
-import { DEFAULT_STATS_PERIOD } from "@/lib/stats";
-import type { RecommendationStats, ReferenceStats, StatsOverview } from "@/types";
+import { bucketForPeriod, DEFAULT_STATS_PERIOD } from "@/lib/stats";
+import type {
+  KeywordTrend,
+  RecommendationStats,
+  ReferenceStats,
+  RepoStat,
+  StatsOverview,
+  TimeseriesPoint,
+} from "@/types";
 
 const MS_PER_DAY = 86_400_000;
 const REFERENCE_LIMIT = 10;
+const THEMES_LIMIT = 10;
+const REPOS_LIMIT = 10;
 
 /** Carrega as três agregações da tela de estatísticas (feitas no banco, com RLS do usuário). */
 export const fetchStats = createAsyncThunk(
@@ -12,7 +21,7 @@ export const fetchStats = createAsyncThunk(
   async ({ teamId, days }: { teamId: string; days: number }) => {
     const supabase = getSupabase();
     const since = new Date(Date.now() - days * MS_PER_DAY).toISOString();
-    const [overview, references, calibration] = await Promise.all([
+    const [overview, references, calibration, timeseries, themes, repos] = await Promise.all([
       supabase.rpc("get_team_stats_overview", { p_team_id: teamId, p_since: since }),
       supabase.rpc("get_team_reference_stats", {
         p_team_id: teamId,
@@ -20,13 +29,29 @@ export const fetchStats = createAsyncThunk(
         p_limit: REFERENCE_LIMIT,
       }),
       supabase.rpc("get_team_recommendation_stats", { p_team_id: teamId, p_since: since }),
+      supabase.rpc("get_team_stats_timeseries", {
+        p_team_id: teamId,
+        p_since: since,
+        p_bucket: bucketForPeriod(days),
+      }),
+      supabase.rpc("get_team_keyword_trends", { p_team_id: teamId, p_since: since, p_limit: THEMES_LIMIT }),
+      supabase.rpc("get_team_repo_stats", { p_team_id: teamId, p_since: since, p_limit: REPOS_LIMIT }),
     ]);
-    const failed = overview.error ?? references.error ?? calibration.error;
+    const failed =
+      overview.error ??
+      references.error ??
+      calibration.error ??
+      timeseries.error ??
+      themes.error ??
+      repos.error;
     if (failed) throw new Error(failed.message);
     return {
       overview: overview.data as StatsOverview,
       references: references.data as ReferenceStats,
       calibration: calibration.data as RecommendationStats,
+      timeseries: timeseries.data as TimeseriesPoint[],
+      themes: themes.data as KeywordTrend[],
+      repos: repos.data as RepoStat[],
     };
   }
 );
@@ -38,6 +63,9 @@ interface StatsState {
   overview: StatsOverview | null;
   references: ReferenceStats | null;
   calibration: RecommendationStats | null;
+  timeseries: TimeseriesPoint[] | null;
+  themes: KeywordTrend[] | null;
+  repos: RepoStat[] | null;
   loading: boolean;
   error: string | null;
   /** Só a resposta da última chamada vale (troca rápida de time ou período). */
@@ -50,6 +78,9 @@ const initialState: StatsState = {
   overview: null,
   references: null,
   calibration: null,
+  timeseries: null,
+  themes: null,
+  repos: null,
   loading: false,
   error: null,
   requestId: null,
@@ -71,6 +102,9 @@ const statsSlice = createSlice({
           state.overview = null;
           state.references = null;
           state.calibration = null;
+          state.timeseries = null;
+          state.themes = null;
+          state.repos = null;
         }
         state.loading = true;
         state.error = null;
@@ -81,6 +115,9 @@ const statsSlice = createSlice({
         state.overview = action.payload.overview;
         state.references = action.payload.references;
         state.calibration = action.payload.calibration;
+        state.timeseries = action.payload.timeseries;
+        state.themes = action.payload.themes;
+        state.repos = action.payload.repos;
         state.loading = false;
       })
       .addCase(fetchStats.rejected, (state, action) => {

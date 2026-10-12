@@ -121,6 +121,38 @@ export interface OutcomeCounts {
   pending: number;
 }
 
+/** Um período (dia ou semana) de get_team_stats_timeseries; períodos sem revisão vêm com zeros. */
+export interface TimeseriesPoint {
+  bucket_start: string;
+  reviews: number;
+  issues: number;
+  /** null quando o período não teve revisões. */
+  avg_issues: number | null;
+  errors: number;
+  warnings: number;
+  infos: number;
+}
+
+/** Um tema (palavra-chave) de get_team_keyword_trends, com o total do período anterior. */
+export interface KeywordTrend {
+  keyword: string;
+  total: number;
+  errors: number;
+  warnings: number;
+  infos: number;
+  last_seen: string;
+  previous_total: number;
+}
+
+/** Um repositório de get_team_repo_stats (by_category conta todos os achados, inclusive info). */
+export interface RepoStat {
+  repo: string;
+  reviews: number;
+  issues: number;
+  avg_issues: number;
+  by_category: Record<RuleCategory, number>;
+}
+
 /** Resultado de get_team_recommendation_stats. */
 export interface RecommendationStats {
   total: number;
