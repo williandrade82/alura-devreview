@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// DevReview MCP Server — Módulo 1: server mínimo com tool mockada.
+// DevReview MCP Server: tools de regras de review, ADRs e métricas.
 // No STDIO, stdout é o canal JSON-RPC: logs vão sempre para stderr.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadEnv } from "./lib/env.js";
 import { registerGetReviewRules } from "./tools/get-review-rules.js";
-import { registerGetTeamReviewRules } from "./tools/get-team-review-rules.js";
+import { registerAdrTools } from "./tools/adr.js";
+import { registerMetricsTools } from "./tools/metrics.js";
 
 async function main(): Promise<void> {
   loadEnv();
@@ -13,7 +14,8 @@ async function main(): Promise<void> {
   const server = new McpServer({ name: "devreview", version: "1.0.0" });
 
   registerGetReviewRules(server);
-  registerGetTeamReviewRules(server);
+  registerAdrTools(server);
+  registerMetricsTools(server);
 
   await server.connect(new StdioServerTransport());
   console.error("DevReview MCP server rodando via stdio");

@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { mockReviewRules } from "../mocks/review-rules.js";
+import { getSupabase } from "../lib/supabase.js";
 import { RULE_CATEGORIES, RULE_SEVERITIES } from "../types.js";
 
 export function registerGetReviewRules(server: McpServer): void {
@@ -9,12 +9,15 @@ export function registerGetReviewRules(server: McpServer): void {
     {
       title: "Listar regras de code review",
       description:
-        "Retorna as regras de code review de todos os times (Frontend, " +
-        "Backend e Integrations), em uma lista única, com filtros opcionais " +
-        "por categoria, severidade e status. Cada regra traz o team_id do " +
-        "seu time. Os dados são mockados a partir do seed do Supabase " +
-        "(supabase/seed.sql).",
+        "Retorna as regras de code review cadastradas no Supabase, com filtros " +
+        "opcionais por time, categoria, severidade e status. Sem team_id, retorna " +
+        "as regras de todos os times; cada regra traz o team_id do seu time.",
       inputSchema: {
+        team_id: z
+          .string()
+          .uuid()
+          .optional()
+          .describe("ID do time; se omitido, retorna as regras de todos os times"),
         category: z
           .enum(RULE_CATEGORIES)
           .optional()
@@ -29,20 +32,33 @@ export function registerGetReviewRules(server: McpServer): void {
           .describe("Se true, retorna apenas regras ativas"),
       },
     },
-    async ({ category, severity, active_only }) => {
-      const rules = mockReviewRules.filter(
-        (r) =>
-          (!category || r.category === category) &&
-          (!severity || r.severity === severity) &&
-          (!active_only || r.active)
-      );
+    async ({ team_id, category, severity, active_only }) => {
+      let query = getSupabase()
+        .from("review_rules")
+        .select("id, team_id, category, rule, severity, active")
+        .order("team_id", { ascending: true })
+        .order("category", { ascending: true });
 
-      const text = JSON.stringify(
-        { total: rules.length, rules },
-        null,
-        2
-      );
-      return { content: [{ type: "text", text }] };
+      if (team_id) query = query.eq("team_id", team_id);
+      if (category) query = query.eq("category", category);
+      if (severity) query = query.eq("severity", severity);
+      if (active_only) query = query.eq("active", true);
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw new Error(`Erro ao recuperar regras de revisão: ${error.message}`);
+      }
+
+      const rules = data ?? [];
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({ total: rules.length, rules }, null, 2),
+          },
+        ],
+      };
     }
   );
 }
