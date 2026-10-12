@@ -8,6 +8,7 @@ import { registerGetReviewRules } from "./tools/get-review-rules.js";
 import { registerAdrTools } from "./tools/adr.js";
 import { registerMetricsTools } from "./tools/metrics.js";
 import { registerRecordReview } from "./tools/record-review.js";
+import { registerGithubPrTools } from "./tools/github-pr.js";
 
 async function main(): Promise<void> {
   loadEnv();
@@ -17,6 +18,7 @@ async function main(): Promise<void> {
   registerGetReviewRules(server);
   registerAdrTools(server);
   registerMetricsTools(server);
+  registerGithubPrTools(server);
   registerRecordReview(server);
 
   await server.connect(new StdioServerTransport());
