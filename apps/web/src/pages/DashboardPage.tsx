@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { GitPullRequest, ListChecks, BookOpen, AlertTriangle, Building2 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { StatCard } from "@/components/shared/StatCard";
 import { SeverityBadge } from "@/components/shared/SeverityBadge";
 import { CategoryBadge } from "@/components/shared/CategoryBadge";
+import { ReviewDetailsDialog } from "@/components/history/ReviewDetailsDialog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchRules } from "@/store/slices/rulesSlice";
 import { fetchHistory } from "@/store/slices/historySlice";
@@ -27,6 +28,8 @@ export function DashboardPage() {
   const isAdmin = useAppSelector((s) => s.auth.isAdmin);
 
   const teamId = useAppSelector((s) => s.auth.teamId);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = history.find((r) => r.id === selectedId);
 
   useEffect(() => {
     if (!teamId) return;
@@ -99,7 +102,13 @@ export function DashboardPage() {
             </div>
             <div className="divide-y divide-gray-800">
               {recentHistory.map((review) => (
-                <div key={review.id} className="flex items-center justify-between px-5 py-3">
+                <button
+                  key={review.id}
+                  type="button"
+                  onClick={() => setSelectedId(review.id)}
+                  aria-label={`Ver detalhes da revisão do PR #${review.pr_number}`}
+                  className="flex w-full items-center justify-between px-5 py-3 text-left transition-colors hover:bg-gray-800/60 focus-visible:bg-gray-800/60 focus-visible:outline-none"
+                >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-white">
                       #{review.pr_number}{" "}
@@ -112,7 +121,7 @@ export function DashboardPage() {
                   <div className="ml-4 flex-shrink-0">
                     <SeverityBadge severity={issueSeverity(review.issues_found)} />
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -140,6 +149,11 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+
+      <ReviewDetailsDialog
+        review={selected}
+        onClose={() => setSelectedId(null)}
+      />
     </div>
   );
 }

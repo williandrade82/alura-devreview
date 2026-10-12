@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, ListChecks, History, BookOpen, GitPullRequest, LogOut, Users, Building2 } from "lucide-react";
+import { LayoutDashboard, ListChecks, History, BookOpen, GitPullRequest, LogOut, Users, Building2, UserCog } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ProfileDialog } from "@/components/layout/ProfileDialog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { selectSwitchableTeams } from "@/store/selectors";
 import { setActiveTeam, signOut } from "@/store/slices/authSlice";
@@ -25,7 +26,8 @@ const navItems = [
 
 export function Sidebar() {
   const dispatch = useAppDispatch();
-  const { email, role, isAdmin, teamId } = useAppSelector((s) => s.auth);
+  const { email, name, role, isAdmin, teamId } = useAppSelector((s) => s.auth);
+  const [profileOpen, setProfileOpen] = useState(false);
   const switchableTeams = useAppSelector(selectSwitchableTeams);
   const visibleItems = useMemo(() => {
     const items = [...navItems];
@@ -101,10 +103,21 @@ export function Sidebar() {
       <div className="space-y-2 border-t border-gray-800 px-4 py-3">
         {email && (
           <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs text-gray-300" title={email}>{email}</p>
-              <p className="text-xs text-gray-600">{roleLabel}</p>
-            </div>
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
+              title="Editar perfil"
+              aria-label="Editar perfil"
+              className="group flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5 text-left hover:bg-gray-800 focus-visible:bg-gray-800 focus-visible:outline-none"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs text-gray-300" title={email}>
+                  {name ?? email}
+                </p>
+                <p className="text-xs text-gray-600">{roleLabel}</p>
+              </div>
+              <UserCog className="h-3.5 w-3.5 flex-shrink-0 text-gray-600 group-hover:text-gray-300" />
+            </button>
             <button
               type="button"
               title="Sair"
@@ -118,6 +131,8 @@ export function Sidebar() {
         )}
         <p className="text-xs text-gray-600">v0.1.0 — Alura MCP Course</p>
       </div>
+
+      <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
     </aside>
   );
 }
