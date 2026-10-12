@@ -79,13 +79,25 @@ function findingBody(f: StoredFinding): string {
   return parts.join("\n\n");
 }
 
+const RECOMMENDATION_LABEL = {
+  approve: "aprovar",
+  request_changes: "solicitar mudanças",
+  comment: "apenas comentar",
+} as const;
+
+interface StoredReview {
+  review_summary: string | null;
+  recommendation: keyof typeof RECOMMENDATION_LABEL | null;
+  recommendation_reason: string | null;
+}
+
 interface StoredKeyword {
   keyword: string;
   severity: keyof typeof SEVERITY_ORDER;
 }
 
 function buildSummary(
-  summary: string,
+  review: StoredReview,
   findings: StoredFinding[],
   issues: number,
   inlineIds: Set<StoredFinding>,
@@ -94,12 +106,21 @@ function buildSummary(
   const lines = [
     "## DevReview",
     "",
-    sanitizeMarkdown(summary),
+    sanitizeMarkdown(review.review_summary ?? ""),
     "",
     `**Problemas (erro + aviso):** ${issues} · **Achados:** ${findings.length}`,
   ];
   if (keywords.length > 0) {
     lines.push("", `**Tópicos:** ${keywords.map((k) => `\`${k.keyword.replace(/`/g, "'")}\``).join(" · ")}`);
+  }
+
+  // Informativo: não usa o estado de review do GitHub, então não aprova nem bloqueia o PR.
+  if (review.recommendation) {
+    lines.push(
+      "",
+      `**Recomendação do DevReview (informativa, não altera o status do PR):** ${RECOMMENDATION_LABEL[review.recommendation]}`
+    );
+    if (review.recommendation_reason) lines.push("", `_${sanitizeMarkdown(review.recommendation_reason)}_`);
   }
 
   const notInline = findings.filter((f) => !inlineIds.has(f));
@@ -143,7 +164,11 @@ export async function publishReviewToGithub(args: {
       { data: findingRows, error: findingsError },
       { data: keywordRows },
     ] = await Promise.all([
-      supabase.from("review_history").select("review_summary").eq("id", args.reviewId).single(),
+      supabase
+        .from("review_history")
+        .select("review_summary, recommendation, recommendation_reason")
+        .eq("id", args.reviewId)
+        .single(),
       supabase
         .from("review_findings")
         .select("severity, category, rule_text, adr_title, file_path, line_start, line_end, message, suggestion, code_snippet")
@@ -183,7 +208,7 @@ export async function publishReviewToGithub(args: {
         body: {
           ...commit,
           event: "COMMENT",
-          body: buildSummary(review.review_summary ?? "", findings, args.issues, new Set(inline), keywords),
+          body: buildSummary(review as StoredReview, findings, args.issues, new Set(inline), keywords),
           comments: inlineComments,
         },
       });
@@ -195,7 +220,7 @@ export async function publishReviewToGithub(args: {
         body: {
           ...commit,
           event: "COMMENT",
-          body: buildSummary(review.review_summary ?? "", findings, args.issues, new Set(), keywords),
+          body: buildSummary(review as StoredReview, findings, args.issues, new Set(), keywords),
         },
       });
     }

@@ -10,6 +10,10 @@ export const RULE_CATEGORIES = [
 
 export const RULE_SEVERITIES = ["error", "warning", "info"] as const;
 
+// Espelha os check constraints de review_history (00013_review_recommendation.sql).
+export const RECOMMENDATIONS = ["approve", "request_changes", "comment"] as const;
+export const CONFIDENCES = ["low", "medium", "high"] as const;
+
 export type RuleCategory = (typeof RULE_CATEGORIES)[number];
 export type RuleSeverity = (typeof RULE_SEVERITIES)[number];
 
