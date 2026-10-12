@@ -6,7 +6,8 @@ interface SeverityBadgeProps {
   className?: string;
 }
 
-const config: Record<RuleSeverity, { label: string; className: string }> = {
+/** Rótulo e cores de cada severidade (reutilizado por outros componentes, ex.: chips de palavra-chave). */
+export const severityConfig: Record<RuleSeverity, { label: string; className: string }> = {
   error: {
     label: "Erro",
     className:
@@ -25,7 +26,7 @@ const config: Record<RuleSeverity, { label: string; className: string }> = {
 };
 
 export function SeverityBadge({ severity, className }: SeverityBadgeProps) {
-  const { label, className: severityClass } = config[severity];
+  const { label, className: severityClass } = severityConfig[severity];
   return (
     <span
       className={cn(

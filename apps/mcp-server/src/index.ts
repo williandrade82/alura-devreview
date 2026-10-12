@@ -8,6 +8,7 @@ import { registerGetReviewRules } from "./tools/get-review-rules.js";
 import { registerAdrTools } from "./tools/adr.js";
 import { registerMetricsTools } from "./tools/metrics.js";
 import { registerRecordReview } from "./tools/record-review.js";
+import { registerKeywordTools } from "./tools/keywords.js";
 import { registerGithubPrTools } from "./tools/github-pr.js";
 
 async function main(): Promise<void> {
@@ -18,6 +19,7 @@ async function main(): Promise<void> {
   registerGetReviewRules(server);
   registerAdrTools(server);
   registerMetricsTools(server);
+  registerKeywordTools(server);
   registerGithubPrTools(server);
   registerRecordReview(server);
 
