@@ -79,7 +79,18 @@ function findingBody(f: StoredFinding): string {
   return parts.join("\n\n");
 }
 
-function buildSummary(summary: string, findings: StoredFinding[], issues: number, inlineIds: Set<StoredFinding>): string {
+interface StoredKeyword {
+  keyword: string;
+  severity: keyof typeof SEVERITY_ORDER;
+}
+
+function buildSummary(
+  summary: string,
+  findings: StoredFinding[],
+  issues: number,
+  inlineIds: Set<StoredFinding>,
+  keywords: StoredKeyword[]
+): string {
   const lines = [
     "## DevReview",
     "",
@@ -87,6 +98,9 @@ function buildSummary(summary: string, findings: StoredFinding[], issues: number
     "",
     `**Problemas (erro + aviso):** ${issues} · **Achados:** ${findings.length}`,
   ];
+  if (keywords.length > 0) {
+    lines.push("", `**Tópicos:** ${keywords.map((k) => `\`${k.keyword.replace(/`/g, "'")}\``).join(" · ")}`);
+  }
 
   const notInline = findings.filter((f) => !inlineIds.has(f));
   if (notInline.length > 0) {
@@ -124,13 +138,23 @@ export async function publishReviewToGithub(args: {
 
   try {
     const supabase = getSupabase();
-    const [{ data: review, error: reviewError }, { data: findingRows, error: findingsError }] = await Promise.all([
+    const [
+      { data: review, error: reviewError },
+      { data: findingRows, error: findingsError },
+      { data: keywordRows },
+    ] = await Promise.all([
       supabase.from("review_history").select("review_summary").eq("id", args.reviewId).single(),
       supabase
         .from("review_findings")
         .select("severity, category, rule_text, adr_title, file_path, line_start, line_end, message, suggestion, code_snippet")
         .eq("review_id", args.reviewId),
+      supabase
+        .from("review_keywords")
+        .select("keyword, severity")
+        .eq("review_id", args.reviewId)
+        .order("position", { ascending: true }),
     ]);
+    const keywords = (keywordRows ?? []) as StoredKeyword[];
     if (reviewError || findingsError || !review) {
       return { published: false, reason: "error", message: "Revisão gravada, mas não foi possível ler seu conteúdo para publicar no PR." };
     }
@@ -159,7 +183,7 @@ export async function publishReviewToGithub(args: {
         body: {
           ...commit,
           event: "COMMENT",
-          body: buildSummary(review.review_summary ?? "", findings, args.issues, new Set(inline)),
+          body: buildSummary(review.review_summary ?? "", findings, args.issues, new Set(inline), keywords),
           comments: inlineComments,
         },
       });
@@ -171,7 +195,7 @@ export async function publishReviewToGithub(args: {
         body: {
           ...commit,
           event: "COMMENT",
-          body: buildSummary(review.review_summary ?? "", findings, args.issues, new Set()),
+          body: buildSummary(review.review_summary ?? "", findings, args.issues, new Set(), keywords),
         },
       });
     }
