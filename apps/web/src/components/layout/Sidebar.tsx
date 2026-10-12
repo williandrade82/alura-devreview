@@ -1,6 +1,20 @@
+import { useMemo } from "react";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, ListChecks, History, BookOpen, GitPullRequest } from "lucide-react";
+import { LayoutDashboard, ListChecks, History, BookOpen, GitPullRequest, LogOut, Users, Building2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { selectSwitchableTeams } from "@/store/selectors";
+import { setActiveTeam, signOut } from "@/store/slices/authSlice";
 import { cn } from "@/lib/utils";
+
+const membersNavItem = { to: "/membros", label: "Membros", icon: Users, end: false };
+const teamsNavItem = { to: "/times", label: "Times", icon: Building2, end: false };
 
 const navItems = [
   { to: "/", label: "Início", icon: LayoutDashboard, end: true },
@@ -10,6 +24,21 @@ const navItems = [
 ];
 
 export function Sidebar() {
+  const dispatch = useAppDispatch();
+  const { email, role, isAdmin, teamId } = useAppSelector((s) => s.auth);
+  const switchableTeams = useAppSelector(selectSwitchableTeams);
+  const visibleItems = useMemo(() => {
+    const items = [...navItems];
+    if (isAdmin || role === "leader") items.push(membersNavItem);
+    if (isAdmin) items.push(teamsNavItem);
+    return items;
+  }, [isAdmin, role]);
+  const roleLabel = isAdmin
+    ? "Administrador"
+    : role === "leader"
+      ? "Líder"
+      : "Membro";
+
   return (
     <aside className="flex w-60 flex-shrink-0 flex-col border-r border-gray-800 bg-gray-900">
       {/* Logo */}
@@ -22,9 +51,33 @@ export function Sidebar() {
         </span>
       </div>
 
+      {/* Time ativo (aparece quando há mais de um time para escolher) */}
+      {switchableTeams.length > 1 && (
+        <div className="border-b border-gray-800 px-3 py-3">
+          <Select
+            value={teamId ?? undefined}
+            onValueChange={(id) => dispatch(setActiveTeam(id))}
+          >
+            <SelectTrigger
+              aria-label="Time ativo"
+              className="border-gray-700 bg-gray-800 text-sm text-white"
+            >
+              <SelectValue placeholder="Selecione o time" />
+            </SelectTrigger>
+            <SelectContent className="border-gray-700 bg-gray-900">
+              {switchableTeams.map((team) => (
+                <SelectItem key={team.id} value={team.id}>
+                  {team.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Nav */}
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {navItems.map(({ to, label, icon: Icon, end }) => (
+        {visibleItems.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -45,7 +98,24 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-gray-800 px-4 py-3">
+      <div className="space-y-2 border-t border-gray-800 px-4 py-3">
+        {email && (
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs text-gray-300" title={email}>{email}</p>
+              <p className="text-xs text-gray-600">{roleLabel}</p>
+            </div>
+            <button
+              type="button"
+              title="Sair"
+              aria-label="Sair"
+              onClick={() => dispatch(signOut())}
+              className="rounded p-1.5 text-gray-500 hover:bg-gray-800 hover:text-white"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         <p className="text-xs text-gray-600">v0.1.0 — Alura MCP Course</p>
       </div>
     </aside>

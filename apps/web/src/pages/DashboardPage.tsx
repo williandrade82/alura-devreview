@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { GitPullRequest, ListChecks, BookOpen, AlertTriangle } from "lucide-react";
+import { GitPullRequest, ListChecks, BookOpen, AlertTriangle, Building2 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { StatCard } from "@/components/shared/StatCard";
 import { SeverityBadge } from "@/components/shared/SeverityBadge";
@@ -8,32 +8,32 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchRules } from "@/store/slices/rulesSlice";
 import { fetchHistory } from "@/store/slices/historySlice";
 import { fetchAdrs } from "@/store/slices/adrsSlice";
-import { TEAM_ID } from "@/lib/team";
-
-function issueSeverity(issues: number): "error" | "warning" | "info" {
-  if (issues >= 4) return "error";
-  if (issues > 0) return "warning";
-  return "info";
-}
+import {
+  issueSeverity,
+  selectActiveRulesCount,
+  selectDashboardAvgIssues,
+  selectRecentPeriodHistory,
+  selectTeamsCount,
+} from "@/store/selectors";
 
 export function DashboardPage() {
   const dispatch = useAppDispatch();
   const rules = useAppSelector((s) => s.rules.items);
-  const history = useAppSelector((s) => s.history.items);
+  const history = useAppSelector(selectRecentPeriodHistory);
+  const activeRules = useAppSelector(selectActiveRulesCount);
+  const avgIssues = useAppSelector(selectDashboardAvgIssues);
   const adrs = useAppSelector((s) => s.adrs.items);
+  const teamsCount = useAppSelector(selectTeamsCount);
+  const isAdmin = useAppSelector((s) => s.auth.isAdmin);
+
+  const teamId = useAppSelector((s) => s.auth.teamId);
 
   useEffect(() => {
-    dispatch(fetchRules(TEAM_ID));
-    dispatch(fetchHistory(TEAM_ID));
-    dispatch(fetchAdrs(TEAM_ID));
-  }, [dispatch]);
-
-  const activeRules = rules.filter((r) => r.active).length;
-  const totalIssues = history.reduce((acc, r) => acc + r.issues_found, 0);
-  const avgIssues =
-    history.length > 0
-      ? (totalIssues / history.length).toFixed(1)
-      : "0";
+    if (!teamId) return;
+    dispatch(fetchRules(teamId));
+    dispatch(fetchHistory(teamId));
+    dispatch(fetchAdrs(teamId));
+  }, [dispatch, teamId]);
 
   const recentHistory = history.slice(0, 3);
   const recentRules = rules.slice(0, 4);
@@ -44,7 +44,7 @@ export function DashboardPage() {
 
       <div className="flex-1 space-y-6 p-6">
         {/* Stat Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <StatCard
             title="Total de Reviews"
             value={history.length}
@@ -65,6 +65,19 @@ export function DashboardPage() {
             icon={BookOpen}
             iconColor="bg-purple-500/20 text-purple-400"
             description="Decisões arquiteturais"
+          />
+          <StatCard
+            title="Times"
+            value={teamsCount}
+            icon={Building2}
+            iconColor="bg-cyan-500/20 text-cyan-400"
+            description={
+              isAdmin
+                ? "Cadastrados na plataforma"
+                : teamsCount === 1
+                  ? "Time do qual você faz parte"
+                  : "Times dos quais você faz parte"
+            }
           />
           <StatCard
             title="Média de Issues"
