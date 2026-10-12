@@ -19,7 +19,6 @@ import {
   selectFilteredHistory,
   selectFilteredTotalIssues,
 } from "@/store/selectors";
-import { TEAM_ID } from "@/lib/team";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", {
@@ -36,9 +35,11 @@ export function HistoryPage() {
   const totalIssues = useAppSelector(selectFilteredTotalIssues);
   const avgIssues = useAppSelector(selectFilteredAvgIssues);
 
+  const teamId = useAppSelector((s) => s.auth.teamId);
+
   useEffect(() => {
-    dispatch(fetchHistory(TEAM_ID));
-  }, [dispatch]);
+    if (teamId) dispatch(fetchHistory(teamId));
+  }, [dispatch, teamId]);
 
   return (
     <div className="flex flex-col overflow-y-auto">

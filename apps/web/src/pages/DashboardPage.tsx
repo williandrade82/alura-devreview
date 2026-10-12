@@ -14,7 +14,6 @@ import {
   selectDashboardAvgIssues,
   selectRecentPeriodHistory,
 } from "@/store/selectors";
-import { TEAM_ID } from "@/lib/team";
 
 export function DashboardPage() {
   const dispatch = useAppDispatch();
@@ -24,11 +23,14 @@ export function DashboardPage() {
   const avgIssues = useAppSelector(selectDashboardAvgIssues);
   const adrs = useAppSelector((s) => s.adrs.items);
 
+  const teamId = useAppSelector((s) => s.auth.teamId);
+
   useEffect(() => {
-    dispatch(fetchRules(TEAM_ID));
-    dispatch(fetchHistory(TEAM_ID));
-    dispatch(fetchAdrs(TEAM_ID));
-  }, [dispatch]);
+    if (!teamId) return;
+    dispatch(fetchRules(teamId));
+    dispatch(fetchHistory(teamId));
+    dispatch(fetchAdrs(teamId));
+  }, [dispatch, teamId]);
 
   const recentHistory = history.slice(0, 3);
   const recentRules = rules.slice(0, 4);

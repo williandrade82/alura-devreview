@@ -1,6 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, ListChecks, History, BookOpen, GitPullRequest } from "lucide-react";
+import { LayoutDashboard, ListChecks, History, BookOpen, GitPullRequest, LogOut, Users } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { signOut } from "@/store/slices/authSlice";
 import { cn } from "@/lib/utils";
+
+const leaderNavItems = [
+  { to: "/membros", label: "Membros", icon: Users, end: false },
+];
 
 const navItems = [
   { to: "/", label: "Início", icon: LayoutDashboard, end: true },
@@ -10,6 +16,9 @@ const navItems = [
 ];
 
 export function Sidebar() {
+  const dispatch = useAppDispatch();
+  const { email, role } = useAppSelector((s) => s.auth);
+
   return (
     <aside className="flex w-60 flex-shrink-0 flex-col border-r border-gray-800 bg-gray-900">
       {/* Logo */}
@@ -24,7 +33,7 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {navItems.map(({ to, label, icon: Icon, end }) => (
+        {[...navItems, ...(role === "leader" ? leaderNavItems : [])].map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -45,7 +54,24 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-gray-800 px-4 py-3">
+      <div className="space-y-2 border-t border-gray-800 px-4 py-3">
+        {email && (
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs text-gray-300" title={email}>{email}</p>
+              <p className="text-xs text-gray-600">{role === "leader" ? "Líder" : "Membro"}</p>
+            </div>
+            <button
+              type="button"
+              title="Sair"
+              aria-label="Sair"
+              onClick={() => dispatch(signOut())}
+              className="rounded p-1.5 text-gray-500 hover:bg-gray-800 hover:text-white"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         <p className="text-xs text-gray-600">v0.1.0 — Alura MCP Course</p>
       </div>
     </aside>

@@ -4,6 +4,8 @@ export type RuleCategory =
   | "architecture"
   | "security"
   | "performance";
+export type TeamRole = "leader" | "member";
+export type MemberStatus = "pending" | "approved";
 export type AdrStatus = "proposed" | "accepted" | "deprecated";
 
 export interface ReviewRule {
@@ -13,6 +15,19 @@ export interface ReviewRule {
   rule: string;
   severity: RuleSeverity;
   active: boolean;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+}
+
+export interface TeamMember {
+  team_id: string;
+  user_id: string;
+  email: string | null;
+  role: TeamRole;
+  status: MemberStatus;
 }
 
 export interface ReviewHistory {
