@@ -106,7 +106,6 @@ export function DashboardPage() {
                   key={review.id}
                   type="button"
                   onClick={() => setSelectedId(review.id)}
-                  aria-label={`Ver detalhes da revisão do PR #${review.pr_number}`}
                   className="flex w-full items-center justify-between px-5 py-3 text-left transition-colors hover:bg-gray-800/60 focus-visible:bg-gray-800/60 focus-visible:outline-none"
                 >
                   <div className="min-w-0 flex-1">
@@ -121,6 +120,7 @@ export function DashboardPage() {
                   <div className="ml-4 flex-shrink-0">
                     <SeverityBadge severity={issueSeverity(review.issues_found)} />
                   </div>
+                  <span className="sr-only">Ver detalhes da revisão</span>
                 </button>
               ))}
             </div>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { CategoryBadge } from "@/components/shared/CategoryBadge";
 import { SeverityBadge } from "@/components/shared/SeverityBadge";
 import {
@@ -9,7 +10,7 @@ import { useAppSelector } from "@/store/hooks";
 import { ReviewFinding } from "@/types";
 
 /**
- * Nome da regra que gerou o achado. Ao passar o mouse (ou focar com o teclado)
+ * Nome da regra que gerou o achado. Ao passar o mouse, focar com o teclado ou tocar/clicar
  * mostra os detalhes da regra atual: categoria, severidade, situação e texto completo.
  */
 export function RuleReference({ finding }: { finding: ReviewFinding }) {
@@ -19,6 +20,8 @@ export function RuleReference({ finding }: { finding: ReviewFinding }) {
       : undefined
   );
   const rulesLoading = useAppSelector((s) => s.rules.loading);
+  // Controlado para que o toque/clique também abra o card (o hover não existe em telas de toque).
+  const [open, setOpen] = useState(false);
 
   const label = rule?.rule ?? finding.rule_text;
   if (!label) return null;
@@ -27,16 +30,18 @@ export function RuleReference({ finding }: { finding: ReviewFinding }) {
   const changed = rule && finding.rule_text && rule.rule !== finding.rule_text;
 
   return (
-    <HoverCard openDelay={150} closeDelay={100}>
+    <HoverCard open={open} onOpenChange={setOpen} openDelay={150} closeDelay={100}>
       <HoverCardTrigger asChild>
         <p className="text-xs text-gray-500">
           Regra:{" "}
-          <span
-            tabIndex={0}
-            className="cursor-help underline decoration-dotted underline-offset-2 hover:text-gray-300 focus-visible:text-gray-300 focus-visible:outline-none"
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={() => setOpen(true)}
+            className="cursor-help text-left underline decoration-dotted underline-offset-2 hover:text-gray-300 focus-visible:text-gray-300 focus-visible:outline-none"
           >
             {label}
-          </span>
+          </button>
         </p>
       </HoverCardTrigger>
       <HoverCardContent>

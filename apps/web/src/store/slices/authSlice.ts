@@ -198,6 +198,9 @@ export const changePassword = createAsyncThunk(
     if (verifyError) throw new Error("A senha atual está incorreta.");
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw new Error(error.message);
+    // Encerra as outras sessões (outros dispositivos e abas); a atual continua ativa.
+    // A senha já foi trocada: uma falha aqui não deve fazer a troca parecer ter falhado.
+    await supabase.auth.signOut({ scope: "others" }).catch(() => undefined);
   }
 );
 
