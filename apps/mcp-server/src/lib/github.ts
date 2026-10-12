@@ -20,14 +20,37 @@ export class GithubError extends Error {
   }
 }
 
+/** Formato único aceito para URLs de PR (o número cabe em int: até 10 dígitos). */
+export const PR_URL_PATTERN = /^https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/pull\/(\d{1,10})$/;
+export const PR_URL_FORMAT_HINT = "Use a URL do PR no formato https://github.com/dono/repo/pull/123";
+
+/** Lê o token de GITHUB_PAT; `undefined` se a variável não existe ou está vazia. */
 export function getGithubToken(): string | undefined {
   return process.env.GITHUB_PAT?.trim() || undefined;
 }
 
+/**
+ * Extrai dono, repositório e número de uma URL de PR do GitHub.
+ * @throws Error se a URL não segue o formato aceito (PR_URL_PATTERN).
+ */
 export function parsePullRequestUrl(url: string): PullRequestRef {
-  const match = /^https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/pull\/(\d{1,10})$/.exec(url);
-  if (!match) throw new Error("Use a URL do PR no formato https://github.com/dono/repo/pull/123");
+  const match = PR_URL_PATTERN.exec(url);
+  if (!match) throw new Error(PR_URL_FORMAT_HINT);
   return { owner: match[1], repo: match[2], number: Number(match[3]) };
+}
+
+/**
+ * Repositórios em que o server pode PUBLICAR (escrever), definidos em GITHUB_ALLOWED_REPOS,
+ * separados por vírgula: `dono/repo` ou `dono/*`. Sem a variável, nenhuma publicação é
+ * permitida: o destino vem do LLM, que lê conteúdo não confiável. Leituras não são restritas.
+ */
+export function isPublishAllowed(ref: PullRequestRef): boolean {
+  const allowed = (process.env.GITHUB_ALLOWED_REPOS ?? "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+  const full = `${ref.owner}/${ref.repo}`.toLowerCase();
+  return allowed.includes(full) || allowed.includes(`${ref.owner.toLowerCase()}/*`);
 }
 
 /** Chama a API do GitHub. Leituras funcionam sem token em repositórios públicos. */

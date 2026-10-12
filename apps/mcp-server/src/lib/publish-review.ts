@@ -2,6 +2,7 @@ import { getSupabase } from "./supabase.js";
 import {
   GithubError,
   getGithubToken,
+  isPublishAllowed,
   githubRequest,
   parsePullRequestUrl,
   type GithubFailure,
@@ -16,10 +17,35 @@ const NO_TOKEN_MESSAGE =
   "Para automatizar, defina a variável GITHUB_PAT (token com permissão de escrita em Pull requests) " +
   "no ambiente do MCP devreview.";
 
+const NOT_ALLOWED_MESSAGE =
+  "A revisão foi gravada, mas não publicada no PR: o repositório não está em GITHUB_ALLOWED_REPOS. " +
+  "Para publicar, defina essa variável no ambiente do MCP devreview (ex.: dono/repo ou dono/*).";
+
+// Caractere de largura zero: quebra @menção e #referência sem alterar o texto visível.
+const ZWSP = String.fromCharCode(0x200b);
+
+/**
+ * Neutraliza no texto publicado o que geraria efeito colateral no GitHub: menções (@usuario),
+ * referências a issues (#123) e imagens (rastreamento). Trechos entre crases ficam intactos.
+ */
+function sanitizeMarkdown(text: string): string {
+  return text
+    .split(/(`[^`]*`)/)
+    .map((part, i) =>
+      i % 2 === 1
+        ? part
+        : part
+            .replace(/@(?=[A-Za-z0-9_])/g, "@" + ZWSP)
+            .replace(/(^|[^A-Za-z0-9&])#(?=\d)/g, "$1#" + ZWSP)
+            .replace(/!\[/g, "[")
+    )
+    .join("");
+}
+
 export interface PublishOutcome {
   published: boolean;
   review_url?: string;
-  reason?: "no_token" | GithubFailure | "disabled";
+  reason?: "no_token" | "repo_not_allowed" | GithubFailure | "disabled";
   message: string;
 }
 
@@ -44,9 +70,9 @@ function location(f: StoredFinding): string {
 
 /** Corpo do comentário de um achado (usado em linha ou no resumo). */
 function findingBody(f: StoredFinding): string {
-  const parts = [`**${SEVERITY_LABEL[f.severity]}** · ${f.category}`, f.message];
-  if (f.rule_text) parts.push(`_Regra: ${f.rule_text}_`);
-  if (f.suggestion) parts.push(`💡 **Sugestão:** ${f.suggestion}`);
+  const parts = [`**${SEVERITY_LABEL[f.severity]}** · ${f.category}`, sanitizeMarkdown(f.message)];
+  if (f.rule_text) parts.push(`_Regra: ${sanitizeMarkdown(f.rule_text)}_`);
+  if (f.suggestion) parts.push(`💡 **Sugestão:** ${sanitizeMarkdown(f.suggestion)}`);
   if (f.code_snippet) parts.push("```\n" + f.code_snippet.replace(/```/g, "'''") + "\n```");
   return parts.join("\n\n");
 }
@@ -55,7 +81,7 @@ function buildSummary(summary: string, findings: StoredFinding[], issues: number
   const lines = [
     "## DevReview",
     "",
-    summary,
+    sanitizeMarkdown(summary),
     "",
     `**Problemas (erro + aviso):** ${issues} · **Achados:** ${findings.length}`,
   ];
@@ -89,6 +115,9 @@ export async function publishReviewToGithub(args: {
 }): Promise<PublishOutcome> {
   if (!getGithubToken()) {
     return { published: false, reason: "no_token", message: NO_TOKEN_MESSAGE };
+  }
+  if (!isPublishAllowed(parsePullRequestUrl(args.prUrl))) {
+    return { published: false, reason: "repo_not_allowed", message: NOT_ALLOWED_MESSAGE };
   }
 
   try {
