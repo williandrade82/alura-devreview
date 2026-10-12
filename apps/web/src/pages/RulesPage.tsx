@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Trash2, Power } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { SeverityBadge } from "@/components/shared/SeverityBadge";
 import { CategoryBadge } from "@/components/shared/CategoryBadge";
@@ -35,22 +35,35 @@ import {
   setSeverityFilter,
   openModal,
   closeModal,
+  clearActionError,
+  createRule,
+  updateRule,
+  deleteRule,
 } from "@/store/slices/rulesSlice";
-import { TEAM_ID } from "@/lib/team";
 import { RuleCategory, RuleSeverity } from "@/types";
 
 export function RulesPage() {
   const dispatch = useAppDispatch();
-  const { items: rules, categoryFilter, severityFilter, isModalOpen, editingRuleId } =
-    useAppSelector((s) => s.rules);
+  const {
+    items: rules,
+    categoryFilter,
+    severityFilter,
+    isModalOpen,
+    editingRuleId,
+    saving,
+    actionError,
+  } = useAppSelector((s) => s.rules);
+  const teamId = useAppSelector((s) => s.auth.teamId);
+  const isLeader = useAppSelector((s) => s.auth.role === "leader");
 
   const [formRule, setFormRule] = useState("");
   const [formCategory, setFormCategory] = useState<RuleCategory>("style");
   const [formSeverity, setFormSeverity] = useState<RuleSeverity>("warning");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    dispatch(fetchRules(TEAM_ID));
-  }, [dispatch]);
+    if (teamId) dispatch(fetchRules(teamId));
+  }, [dispatch, teamId]);
 
   const editingRule = editingRuleId
     ? rules.find((r) => r.id === editingRuleId)
@@ -73,6 +86,40 @@ export function RulesPage() {
     }
   }
 
+  const deletingRule = deletingId
+    ? rules.find((r) => r.id === deletingId)
+    : null;
+  const canSave = formRule.trim().length > 0 && !saving;
+
+  function handleSave() {
+    const input = {
+      rule: formRule.trim(),
+      category: formCategory,
+      severity: formSeverity,
+    };
+    if (!input.rule || !teamId) return;
+    if (editingRuleId) {
+      dispatch(updateRule({ id: editingRuleId, changes: input }));
+    } else {
+      dispatch(createRule({ teamId, input }));
+    }
+  }
+
+  function handleToggleActive(id: string, active: boolean) {
+    dispatch(updateRule({ id, changes: { active: !active } }));
+  }
+
+  async function handleConfirmDelete() {
+    if (!deletingId) return;
+    const result = await dispatch(deleteRule(deletingId));
+    if (deleteRule.fulfilled.match(result)) setDeletingId(null);
+  }
+
+  function handleCloseDelete() {
+    setDeletingId(null);
+    dispatch(clearActionError());
+  }
+
   const filtered = rules.filter((rule) => {
     const matchCategory =
       categoryFilter === "all" || rule.category === categoryFilter;
@@ -86,6 +133,7 @@ export function RulesPage() {
       <Header
         title="Regras de Review"
         action={
+          isLeader && (
           <Button
             size="sm"
             className="gap-2 bg-indigo-600 hover:bg-indigo-500"
@@ -94,10 +142,17 @@ export function RulesPage() {
             <Plus className="h-4 w-4" />
             Nova Regra
           </Button>
+          )
         }
       />
 
       <div className="flex-1 space-y-4 p-6">
+        {actionError && !isModalOpen && !deletingId && (
+          <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            {actionError}
+          </p>
+        )}
+
         {/* Filters */}
         <div className="flex items-center gap-3">
           <Select
@@ -149,7 +204,7 @@ export function RulesPage() {
                 <TableHead className="w-36 text-gray-400">Categoria</TableHead>
                 <TableHead className="w-28 text-gray-400">Severidade</TableHead>
                 <TableHead className="w-24 text-gray-400">Status</TableHead>
-                <TableHead className="w-16 text-gray-400" />
+                <TableHead className={isLeader ? "w-32 text-gray-400" : "w-0"} />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -158,7 +213,13 @@ export function RulesPage() {
                   key={rule.id}
                   className="border-gray-800 hover:bg-gray-800/50"
                 >
-                  <TableCell className="text-sm text-white">
+                  <TableCell
+                    className={
+                      rule.active
+                        ? "text-sm text-white"
+                        : "text-sm text-gray-500"
+                    }
+                  >
                     {rule.rule}
                   </TableCell>
                   <TableCell>
@@ -179,14 +240,49 @@ export function RulesPage() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-gray-500 hover:text-white"
-                      onClick={() => handleOpenEdit(rule.id)}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
+                    {isLeader && (
+                    <div className="flex items-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-gray-500 hover:text-white"
+                        title={rule.active ? "Desativar regra" : "Ativar regra"}
+                        aria-label={
+                          rule.active ? "Desativar regra" : "Ativar regra"
+                        }
+                        disabled={saving}
+                        onClick={() => handleToggleActive(rule.id, rule.active)}
+                      >
+                        <Power
+                          className={
+                            rule.active
+                              ? "h-3.5 w-3.5 text-green-400"
+                              : "h-3.5 w-3.5"
+                          }
+                        />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-gray-500 hover:text-white"
+                        title="Editar regra"
+                        aria-label="Editar regra"
+                        onClick={() => handleOpenEdit(rule.id)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-gray-500 hover:text-red-400"
+                        title="Excluir regra"
+                        aria-label="Excluir regra"
+                        onClick={() => setDeletingId(rule.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -264,6 +360,10 @@ export function RulesPage() {
                 </Select>
               </div>
             </div>
+
+            {actionError && (
+              <p className="text-sm text-red-400">{actionError}</p>
+            )}
           </div>
 
           <DialogFooter>
@@ -276,9 +376,50 @@ export function RulesPage() {
             </Button>
             <Button
               className="bg-indigo-600 hover:bg-indigo-500"
-              onClick={() => dispatch(closeModal())}
+              disabled={!canSave}
+              onClick={handleSave}
             >
-              Salvar
+              {saving ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de exclusão */}
+      <Dialog
+        open={Boolean(deletingRule)}
+        onOpenChange={(open) => !open && handleCloseDelete()}
+      >
+        <DialogContent className="border-gray-800 bg-gray-900 text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir regra</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-300">
+            Tem certeza que deseja excluir esta regra? Esta ação não pode ser
+            desfeita.
+          </p>
+          {deletingRule && (
+            <p className="rounded-md border border-gray-800 bg-gray-800/50 px-3 py-2 text-sm text-gray-200">
+              {deletingRule.rule}
+            </p>
+          )}
+          {actionError && (
+            <p className="text-sm text-red-400">{actionError}</p>
+          )}
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              className="text-gray-400 hover:text-white"
+              onClick={handleCloseDelete}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-500"
+              disabled={saving}
+              onClick={handleConfirmDelete}
+            >
+              {saving ? "Excluindo..." : "Excluir"}
             </Button>
           </DialogFooter>
         </DialogContent>

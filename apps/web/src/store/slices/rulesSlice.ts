@@ -15,6 +15,57 @@ export const fetchRules = createAsyncThunk(
   }
 );
 
+export interface RuleInput {
+  rule: string;
+  category: RuleCategory;
+  severity: RuleSeverity;
+}
+
+export const createRule = createAsyncThunk(
+  "rules/createRule",
+  async ({ teamId, input }: { teamId: string; input: RuleInput }) => {
+    const { data, error } = await getSupabase()
+      .from("review_rules")
+      .insert({ ...input, team_id: teamId, active: true })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data as ReviewRule;
+  }
+);
+
+export const updateRule = createAsyncThunk(
+  "rules/updateRule",
+  async ({
+    id,
+    changes,
+  }: {
+    id: string;
+    changes: Partial<RuleInput> & { active?: boolean };
+  }) => {
+    const { data, error } = await getSupabase()
+      .from("review_rules")
+      .update(changes)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data as ReviewRule;
+  }
+);
+
+export const deleteRule = createAsyncThunk(
+  "rules/deleteRule",
+  async (id: string) => {
+    const { error } = await getSupabase()
+      .from("review_rules")
+      .delete()
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    return id;
+  }
+);
+
 interface RulesState {
   items: ReviewRule[];
   fetchError: string | null;
@@ -23,6 +74,8 @@ interface RulesState {
   severityFilter: RuleSeverity | "all";
   isModalOpen: boolean;
   editingRuleId: string | null;
+  saving: boolean;
+  actionError: string | null;
 }
 
 const initialState: RulesState = {
@@ -33,6 +86,8 @@ const initialState: RulesState = {
   severityFilter: "all",
   isModalOpen: false,
   editingRuleId: null,
+  saving: false,
+  actionError: null,
 };
 
 const rulesSlice = createSlice({
@@ -48,10 +103,15 @@ const rulesSlice = createSlice({
     openModal(state, action: PayloadAction<string | null>) {
       state.isModalOpen = true;
       state.editingRuleId = action.payload;
+      state.actionError = null;
     },
     closeModal(state) {
       state.isModalOpen = false;
       state.editingRuleId = null;
+      state.actionError = null;
+    },
+    clearActionError(state) {
+      state.actionError = null;
     },
   },
   extraReducers: (builder) => {
@@ -69,10 +129,60 @@ const rulesSlice = createSlice({
         state.loading = false;
         state.fetchError =
           action.error.message ?? "Não foi possível carregar as regras.";
+      })
+      .addCase(createRule.pending, (state) => {
+        state.saving = true;
+        state.actionError = null;
+      })
+      .addCase(createRule.fulfilled, (state, action) => {
+        state.saving = false;
+        state.items.unshift(action.payload);
+        state.isModalOpen = false;
+        state.editingRuleId = null;
+      })
+      .addCase(createRule.rejected, (state, action) => {
+        state.saving = false;
+        state.actionError =
+          action.error.message ?? "Não foi possível criar a regra.";
+      })
+      .addCase(updateRule.pending, (state) => {
+        state.saving = true;
+        state.actionError = null;
+      })
+      .addCase(updateRule.fulfilled, (state, action) => {
+        state.saving = false;
+        state.items = state.items.map((r) =>
+          r.id === action.payload.id ? action.payload : r
+        );
+        state.isModalOpen = false;
+        state.editingRuleId = null;
+      })
+      .addCase(updateRule.rejected, (state, action) => {
+        state.saving = false;
+        state.actionError =
+          action.error.message ?? "Não foi possível atualizar a regra.";
+      })
+      .addCase(deleteRule.pending, (state) => {
+        state.saving = true;
+        state.actionError = null;
+      })
+      .addCase(deleteRule.fulfilled, (state, action) => {
+        state.saving = false;
+        state.items = state.items.filter((r) => r.id !== action.payload);
+      })
+      .addCase(deleteRule.rejected, (state, action) => {
+        state.saving = false;
+        state.actionError =
+          action.error.message ?? "Não foi possível excluir a regra.";
       });
   },
 });
 
-export const { setCategoryFilter, setSeverityFilter, openModal, closeModal } =
-  rulesSlice.actions;
+export const {
+  setCategoryFilter,
+  setSeverityFilter,
+  openModal,
+  closeModal,
+  clearActionError,
+} = rulesSlice.actions;
 export default rulesSlice.reducer;
