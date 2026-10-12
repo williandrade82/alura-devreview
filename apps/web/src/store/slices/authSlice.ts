@@ -39,6 +39,7 @@ async function loadMembership(
   };
 }
 
+/** Restaura a sessão salva e carrega o time e o papel do usuário. */
 export const restoreSession = createAsyncThunk(
   "auth/restoreSession",
   async (): Promise<Membership | null> => {
@@ -50,6 +51,7 @@ export const restoreSession = createAsyncThunk(
   }
 );
 
+/** Entra com e-mail e senha e carrega o time e o papel do usuário. */
 export const signIn = createAsyncThunk(
   "auth/signIn",
   async ({ email, password }: { email: string; password: string }) => {
@@ -62,6 +64,7 @@ export const signIn = createAsyncThunk(
   }
 );
 
+/** Lista os times (id e nome) para a escolha na tela de cadastro. */
 export const fetchTeams = createAsyncThunk("auth/fetchTeams", async () => {
   const { data, error } = await getSupabase()
     .from("teams")
@@ -71,6 +74,7 @@ export const fetchTeams = createAsyncThunk("auth/fetchTeams", async () => {
   return data as Team[];
 });
 
+/** Cadastra o usuário; o time escolhido vira um pedido pendente de aprovação por um líder. */
 export const signUp = createAsyncThunk(
   "auth/signUp",
   async ({

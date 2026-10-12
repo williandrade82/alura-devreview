@@ -4,6 +4,7 @@ import { MemberStatus, TeamMember, TeamRole } from "@/types";
 
 const COLUMNS = "team_id, user_id, email, role, status";
 
+/** Carrega os vínculos do time, incluindo pedidos pendentes (só líderes veem os de outros). */
 export const fetchMembers = createAsyncThunk(
   "members/fetchMembers",
   async (teamId: string) => {
@@ -17,6 +18,7 @@ export const fetchMembers = createAsyncThunk(
   }
 );
 
+/** Aprova um pedido ou altera o papel de um membro. */
 export const updateMember = createAsyncThunk(
   "members/updateMember",
   async ({
@@ -40,6 +42,7 @@ export const updateMember = createAsyncThunk(
   }
 );
 
+/** Recusa um pedido ou remove um membro do time. */
 export const removeMember = createAsyncThunk(
   "members/removeMember",
   async ({ teamId, userId }: { teamId: string; userId: string }) => {

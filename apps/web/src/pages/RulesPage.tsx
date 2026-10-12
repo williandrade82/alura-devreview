@@ -29,6 +29,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { selectFilteredRules } from "@/store/selectors";
+import { RULE_MAX_LENGTH } from "@/lib/limits";
 import {
   fetchRules,
   setCategoryFilter,
@@ -55,6 +57,7 @@ export function RulesPage() {
   } = useAppSelector((s) => s.rules);
   const teamId = useAppSelector((s) => s.auth.teamId);
   const isLeader = useAppSelector((s) => s.auth.role === "leader");
+  const filtered = useAppSelector(selectFilteredRules);
 
   const [formRule, setFormRule] = useState("");
   const [formCategory, setFormCategory] = useState<RuleCategory>("style");
@@ -119,14 +122,6 @@ export function RulesPage() {
     setDeletingId(null);
     dispatch(clearActionError());
   }
-
-  const filtered = rules.filter((rule) => {
-    const matchCategory =
-      categoryFilter === "all" || rule.category === categoryFilter;
-    const matchSeverity =
-      severityFilter === "all" || rule.severity === severityFilter;
-    return matchCategory && matchSeverity;
-  });
 
   return (
     <div className="flex flex-col overflow-y-auto">
@@ -317,6 +312,7 @@ export function RulesPage() {
               </Label>
               <Input
                 id="rule-text"
+                maxLength={RULE_MAX_LENGTH}
                 value={formRule}
                 onChange={(e) => setFormRule(e.target.value)}
                 placeholder="Ex: Nunca expor tokens em código-fonte"

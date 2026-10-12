@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { getSupabase } from "@/lib/supabase";
 import { ReviewRule, RuleCategory, RuleSeverity } from "@/types";
 
+/** Carrega as regras de review do time. */
 export const fetchRules = createAsyncThunk(
   "rules/fetchRules",
   async (teamId: string) => {
@@ -21,6 +22,7 @@ export interface RuleInput {
   severity: RuleSeverity;
 }
 
+/** Cria uma regra ativa no time (só líderes, garantido pelo RLS). */
 export const createRule = createAsyncThunk(
   "rules/createRule",
   async ({ teamId, input }: { teamId: string; input: RuleInput }) => {
@@ -34,6 +36,7 @@ export const createRule = createAsyncThunk(
   }
 );
 
+/** Atualiza uma regra: texto, categoria, severidade ou ativação. */
 export const updateRule = createAsyncThunk(
   "rules/updateRule",
   async ({
@@ -54,6 +57,7 @@ export const updateRule = createAsyncThunk(
   }
 );
 
+/** Exclui uma regra do time. */
 export const deleteRule = createAsyncThunk(
   "rules/deleteRule",
   async (id: string) => {

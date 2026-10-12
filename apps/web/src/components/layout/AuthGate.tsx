@@ -1,16 +1,19 @@
-import { useEffect } from "react";
+import { lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { LoginPage } from "@/pages/LoginPage";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { useAuthBootstrap } from "@/hooks/useAuthBootstrap";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
-import {
-  linkFailed,
-  recoveryStarted,
-  restoreSession,
-  sessionEnded,
-  signOut,
-} from "@/store/slices/authSlice";
+import { restoreSession, signOut } from "@/store/slices/authSlice";
+
+// Telas de auth carregadas sob demanda: usuário já logado não baixa esse código.
+const LoginPage = lazy(() =>
+  import("@/pages/LoginPage").then((m) => ({ default: m.LoginPage }))
+);
+const ResetPasswordPage = lazy(() =>
+  import("@/pages/ResetPasswordPage").then((m) => ({
+    default: m.ResetPasswordPage,
+  }))
+);
 
 function FullScreenMessage({ children }: { children: React.ReactNode }) {
   return (
@@ -25,28 +28,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
   const status = useAppSelector((s) => s.auth.status);
 
-  useEffect(() => {
-    if (!isSupabaseConfigured) return;
-    // Link de e-mail inválido/expirado chega como #error=...&error_description=...
-    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    if (hash.has("error")) {
-      dispatch(
-        linkFailed(
-          hash.get("error_code") === "otp_expired"
-            ? "O link expirou ou já foi usado. Solicite um novo."
-            : hash.get("error_description") ?? "Link inválido."
-        )
-      );
-      window.history.replaceState(null, "", window.location.pathname);
-    }
-
-    dispatch(restoreSession());
-    const { data } = getSupabase().auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") dispatch(sessionEnded());
-      if (event === "PASSWORD_RECOVERY") dispatch(recoveryStarted());
-    });
-    return () => data.subscription.unsubscribe();
-  }, [dispatch]);
+  useAuthBootstrap();
 
   if (!isSupabaseConfigured) {
     // Mantém a mensagem de configuração já exibida pelo app.
@@ -57,9 +39,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return <FullScreenMessage>Carregando...</FullScreenMessage>;
   }
 
-  if (status === "recovery") return <ResetPasswordPage />;
-
-  if (status === "unauthenticated") return <LoginPage />;
+  if (status === "recovery" || status === "unauthenticated") {
+    return (
+      <Suspense fallback={<FullScreenMessage>Carregando...</FullScreenMessage>}>
+        {status === "recovery" ? <ResetPasswordPage /> : <LoginPage />}
+      </Suspense>
+    );
+  }
 
   if (status === "pending-approval") {
     return (

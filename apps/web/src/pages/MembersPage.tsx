@@ -12,6 +12,11 @@ import {
 } from "@/components/ui/table";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
+  selectApprovedMembers,
+  selectLeaderCount,
+  selectPendingMembers,
+} from "@/store/selectors";
+import {
   fetchMembers,
   updateMember,
   removeMember,
@@ -23,17 +28,16 @@ export function MembersPage() {
   const dispatch = useAppDispatch();
   const teamId = useAppSelector((s) => s.auth.teamId);
   const myEmail = useAppSelector((s) => s.auth.email);
-  const { items, loading, busy, error } = useAppSelector((s) => s.members);
+  const { loading, busy, error } = useAppSelector((s) => s.members);
+  const pending = useAppSelector(selectPendingMembers);
+  const approved = useAppSelector(selectApprovedMembers);
+  const leaderCount = useAppSelector(selectLeaderCount);
 
   useEffect(() => {
     if (teamId) dispatch(fetchMembers(teamId));
   }, [dispatch, teamId]);
 
   if (!teamId) return null;
-
-  const pending = items.filter((m) => m.status === "pending");
-  const approved = items.filter((m) => m.status === "approved");
-  const leaderCount = approved.filter((m) => m.role === "leader").length;
 
   return (
     <div className="flex flex-col overflow-y-auto">

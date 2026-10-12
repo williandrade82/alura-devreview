@@ -21,6 +21,10 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
+  selectAdrCountByStatus,
+  selectFilteredAdrs,
+} from "@/store/selectors";
+import {
   clearAdrActionError,
   createAdr,
   deleteAdr,
@@ -29,6 +33,7 @@ import {
   updateAdr,
 } from "@/store/slices/adrsSlice";
 import { AdrStatus } from "@/types";
+import { ADR_TEXT_MAX_LENGTH, ADR_TITLE_MAX_LENGTH } from "@/lib/limits";
 import { cn } from "@/lib/utils";
 
 const statusConfig: Record<
@@ -73,6 +78,8 @@ export function AdrsPage() {
     (s) => s.adrs
   );
 
+  const filtered = useAppSelector(selectFilteredAdrs);
+  const countByStatus = useAppSelector(selectAdrCountByStatus);
   const teamId = useAppSelector((s) => s.auth.teamId);
   const isLeader = useAppSelector((s) => s.auth.role === "leader");
 
@@ -148,14 +155,6 @@ export function AdrsPage() {
     setDeletingId(null);
   }
 
-  const filtered =
-    statusFilter === "all"
-      ? adrs
-      : adrs.filter((a) => a.status === statusFilter);
-
-  const countByStatus = (status: AdrStatus) =>
-    adrs.filter((a) => a.status === status).length;
-
   return (
     <div className="flex flex-col overflow-y-auto">
       <Header
@@ -196,7 +195,7 @@ export function AdrsPage() {
                 {label}
                 {value !== "all" && (
                   <span className="ml-1.5 text-xs text-gray-600">
-                    ({countByStatus(value as AdrStatus)})
+                    ({countByStatus[value as AdrStatus]})
                   </span>
                 )}
               </TabsTrigger>
@@ -313,6 +312,7 @@ export function AdrsPage() {
               </Label>
               <Input
                 id="adr-title"
+                maxLength={ADR_TITLE_MAX_LENGTH}
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
                 placeholder="Ex: Adotar Redux Toolkit para estado global"
@@ -326,6 +326,7 @@ export function AdrsPage() {
               </Label>
               <textarea
                 id="adr-context"
+                maxLength={ADR_TEXT_MAX_LENGTH}
                 rows={3}
                 value={formContext}
                 onChange={(e) => setFormContext(e.target.value)}
@@ -339,6 +340,7 @@ export function AdrsPage() {
               </Label>
               <textarea
                 id="adr-decision"
+                maxLength={ADR_TEXT_MAX_LENGTH}
                 rows={3}
                 value={formDecision}
                 onChange={(e) => setFormDecision(e.target.value)}

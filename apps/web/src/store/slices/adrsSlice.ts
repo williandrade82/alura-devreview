@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { getSupabase } from "@/lib/supabase";
 import { Adr, AdrStatus } from "@/types";
 
+/** Carrega as ADRs do time. */
 export const fetchAdrs = createAsyncThunk(
   "adrs/fetchAdrs",
   async (teamId: string) => {
@@ -22,6 +23,7 @@ export interface AdrInput {
   status: AdrStatus;
 }
 
+/** Cria uma ADR no time (só líderes, garantido pelo RLS). */
 export const createAdr = createAsyncThunk(
   "adrs/createAdr",
   async ({ teamId, input }: { teamId: string; input: AdrInput }) => {
@@ -35,6 +37,7 @@ export const createAdr = createAsyncThunk(
   }
 );
 
+/** Atualiza os campos de uma ADR. */
 export const updateAdr = createAsyncThunk(
   "adrs/updateAdr",
   async ({ id, changes }: { id: string; changes: Partial<AdrInput> }) => {
@@ -49,6 +52,7 @@ export const updateAdr = createAsyncThunk(
   }
 );
 
+/** Exclui uma ADR do time. */
 export const deleteAdr = createAsyncThunk(
   "adrs/deleteAdr",
   async (id: string) => {

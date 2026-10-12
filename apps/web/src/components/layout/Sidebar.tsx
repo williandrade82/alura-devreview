@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { NavLink } from "react-router-dom";
 import { LayoutDashboard, ListChecks, History, BookOpen, GitPullRequest, LogOut, Users } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -18,6 +19,10 @@ const navItems = [
 export function Sidebar() {
   const dispatch = useAppDispatch();
   const { email, role } = useAppSelector((s) => s.auth);
+  const visibleItems = useMemo(
+    () => (role === "leader" ? [...navItems, ...leaderNavItems] : navItems),
+    [role]
+  );
 
   return (
     <aside className="flex w-60 flex-shrink-0 flex-col border-r border-gray-800 bg-gray-900">
@@ -33,7 +38,7 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {[...navItems, ...(role === "leader" ? leaderNavItems : [])].map(({ to, label, icon: Icon, end }) => (
+        {visibleItems.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}

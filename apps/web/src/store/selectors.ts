@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import type { RootState } from "@/store";
-import type { RuleSeverity } from "@/types";
+import type { AdrStatus, RuleSeverity } from "@/types";
 
 const DASHBOARD_PERIOD_DAYS = 30;
 const MS_PER_DAY = 86_400_000;
@@ -69,4 +69,56 @@ export const selectFilteredTotalIssues = createSelector(
 export const selectFilteredAvgIssues = createSelector(
   [selectFilteredHistory],
   (history) => averageIssues(history.map((review) => review.issues_found))
+);
+
+const selectMembers = (state: RootState) => state.members.items;
+const selectCategoryFilter = (state: RootState) => state.rules.categoryFilter;
+const selectSeverityFilter = (state: RootState) => state.rules.severityFilter;
+const selectAdrs = (state: RootState) => state.adrs.items;
+const selectAdrStatusFilter = (state: RootState) => state.adrs.statusFilter;
+
+/** Regras filtradas por categoria e severidade na página de regras. */
+export const selectFilteredRules = createSelector(
+  [selectRules, selectCategoryFilter, selectSeverityFilter],
+  (rules, category, severity) =>
+    rules.filter(
+      (rule) =>
+        (category === "all" || rule.category === category) &&
+        (severity === "all" || rule.severity === severity)
+    )
+);
+
+/** ADRs filtradas pelo status selecionado nas abas. */
+export const selectFilteredAdrs = createSelector(
+  [selectAdrs, selectAdrStatusFilter],
+  (adrs, status) =>
+    status === "all" ? adrs : adrs.filter((adr) => adr.status === status)
+);
+
+/** Quantidade de ADRs por status (para os contadores das abas). */
+export const selectAdrCountByStatus = createSelector([selectAdrs], (adrs) => {
+  const counts: Record<AdrStatus, number> = {
+    proposed: 0,
+    accepted: 0,
+    deprecated: 0,
+  };
+  for (const adr of adrs) counts[adr.status] += 1;
+  return counts;
+});
+
+/** Solicitações de entrada aguardando aprovação de um líder. */
+export const selectPendingMembers = createSelector([selectMembers], (members) =>
+  members.filter((member) => member.status === "pending")
+);
+
+/** Membros já aprovados do time. */
+export const selectApprovedMembers = createSelector(
+  [selectMembers],
+  (members) => members.filter((member) => member.status === "approved")
+);
+
+/** Quantidade de líderes aprovados (o time comporta no máximo 2). */
+export const selectLeaderCount = createSelector(
+  [selectApprovedMembers],
+  (members) => members.filter((member) => member.role === "leader").length
 );
