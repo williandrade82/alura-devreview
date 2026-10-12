@@ -67,3 +67,19 @@ src/
 ```
 
 Os limites de tamanho de texto em `src/lib/limits.ts` espelham os checks da migration `00005` do banco. Ao alterar um, altere o outro.
+
+## Qualidade (testes, lint e formatação)
+
+Scripts do `apps/web`:
+
+| Comando | O que faz |
+| --- | --- |
+| `npm run test` | Testes unitários (Vitest) das funções puras e das guardas de formato das respostas do banco |
+| `npm run lint` | ESLint (TypeScript e regras de hooks do React) em `src` |
+| `npm run format:check` | Confere a formatação (Prettier) |
+| `npm run format` | Aplica a formatação |
+| `npm run check` | Lint, formatação, testes e build, nesta ordem (o mesmo que a CI roda) |
+
+Na raiz: `npm run web:check`. A CI (`.github/workflows/web-ci.yml`) roda o `check` em todo PR que mexe em `apps/web`.
+
+A formatação é adotada de forma incremental: o `format` e o `format:check` cobrem só os arquivos da tela de estatísticas (lista no `package.json`). O restante do código ainda não foi formatado; para ampliar a cobertura, formate o resto num PR dedicado e inclua os caminhos nesses scripts.

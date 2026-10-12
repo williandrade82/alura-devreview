@@ -32,11 +32,7 @@ export function StackedBar({ title, segments }: StackedBarProps) {
             {segments
               .filter((s) => s.value > 0)
               .map((s) => (
-                <div
-                  key={s.label}
-                  className={cn("h-full", s.color)}
-                  style={{ width: `${(s.value / total) * 100}%` }}
-                />
+                <div key={s.label} className={cn("h-full", s.color)} style={{ width: `${(s.value / total) * 100}%` }} />
               ))}
           </div>
           <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-400">

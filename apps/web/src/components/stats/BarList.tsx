@@ -38,10 +38,7 @@ export function BarList({ title, description, items, emptyText, barColor = "bg-i
                 </span>
               </div>
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-800" aria-hidden="true">
-                <div
-                  className={`h-full rounded-full ${barColor}`}
-                  style={{ width: `${(item.value / max) * 100}%` }}
-                />
+                <div className={`h-full rounded-full ${barColor}`} style={{ width: `${(item.value / max) * 100}%` }} />
               </div>
             </li>
           ))}

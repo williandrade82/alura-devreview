@@ -11,6 +11,16 @@ export const DEFAULT_STATS_PERIOD = 30;
 export const AUTO_APPROVE_MIN_DECIDED = 50;
 export const AUTO_APPROVE_MAX_FALSE_APPROVE_RATE = 0.02;
 
+/** Períodos de até 14 dias são agrupados por dia; os maiores, por semana. */
+export function bucketForPeriod(days: number): "day" | "week" {
+  return days <= 14 ? "day" : "week";
+}
+
+/** Rótulo curto de um período da série (dd/MM; na semana, o dia em que ela começa). */
+export function formatBucket(iso: string): string {
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+}
+
 /** Porcentagem com uma casa ("—" quando não há base de cálculo). */
 export function percent(part: number, total: number): string {
   if (total === 0) return "—";
@@ -33,8 +43,7 @@ export function readiness(matrix: Record<Recommendation, OutcomeCounts>): Readin
   const falseApprovals = matrix.approve.changes_requested;
   const falseApproveRate = decidedApprovals === 0 ? null : falseApprovals / decidedApprovals;
   const enoughData = decidedApprovals >= AUTO_APPROVE_MIN_DECIDED;
-  const lowFalseApproveRate =
-    falseApproveRate !== null && falseApproveRate <= AUTO_APPROVE_MAX_FALSE_APPROVE_RATE;
+  const lowFalseApproveRate = falseApproveRate !== null && falseApproveRate <= AUTO_APPROVE_MAX_FALSE_APPROVE_RATE;
   return {
     decidedApprovals,
     falseApprovals,
