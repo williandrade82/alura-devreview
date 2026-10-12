@@ -30,3 +30,8 @@ jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
 enable_signup = true
+
+[auth.email]
+# Com confirmação ligada, cadastrar um e-mail já existente não devolve erro, então
+# não dá para descobrir quais e-mails têm conta. Os e-mails locais chegam no Inbucket.
+enable_confirmations = true
