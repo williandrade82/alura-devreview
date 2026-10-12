@@ -46,6 +46,7 @@ export interface ReviewHistory {
 
 export interface Adr {
   id: string;
+  team_id: string;
   title: string;
   context: string;
   decision: string;
@@ -60,6 +61,8 @@ export interface ReviewFinding {
   category: RuleCategory;
   rule_id: string | null;
   rule_text: string | null;
+  adr_id: string | null;
+  adr_title: string | null;
   file_path: string | null;
   line_start: number | null;
   line_end: number | null;

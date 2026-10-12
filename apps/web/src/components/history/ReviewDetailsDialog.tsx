@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { CategoryBadge } from "@/components/shared/CategoryBadge";
 import { SeverityBadge } from "@/components/shared/SeverityBadge";
 import { SuccessBadge } from "@/components/shared/SuccessBadge";
+import { AdrReference, useEnsureTeamAdrs } from "@/components/history/AdrReference";
 import { RuleReference } from "@/components/history/RuleReference";
 import { Button } from "@/components/ui/button";
 import {
@@ -117,6 +118,7 @@ function FindingCard({
       <p className="text-sm text-gray-200">{finding.message}</p>
 
       <RuleReference finding={finding} />
+      <AdrReference finding={finding} />
       {finding.suggestion && (
         <p className="text-xs text-gray-400">
           <span className="font-medium text-gray-300">Sugestão:</span>{" "}
@@ -170,6 +172,9 @@ export function ReviewDetailsDialog({
   );
 
   const hasFindings = (entry?.items.length ?? 0) > 0;
+
+  // Os detalhes do ADR (hover) vêm dos ADRs do time.
+  useEnsureTeamAdrs(Boolean(reviewId));
 
   return (
     <Dialog open={Boolean(review)} onOpenChange={(open) => !open && onClose()}>

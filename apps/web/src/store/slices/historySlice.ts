@@ -16,7 +16,7 @@ export const fetchHistory = createAsyncThunk(
 );
 
 const FINDING_COLUMNS =
-  "id, review_id, severity, category, rule_id, rule_text, file_path, line_start, line_end, message, suggestion, code_snippet, status, resolved_at";
+  "id, review_id, severity, category, rule_id, rule_text, adr_id, adr_title, file_path, line_start, line_end, message, suggestion, code_snippet, status, resolved_at";
 
 /** Carrega os achados estruturados de uma revisão. */
 export const fetchFindings = createAsyncThunk(

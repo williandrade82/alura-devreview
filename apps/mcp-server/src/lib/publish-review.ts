@@ -53,6 +53,7 @@ interface StoredFinding {
   severity: keyof typeof SEVERITY_ORDER;
   category: string;
   rule_text: string | null;
+  adr_title: string | null;
   file_path: string | null;
   line_start: number | null;
   line_end: number | null;
@@ -72,6 +73,7 @@ function location(f: StoredFinding): string {
 function findingBody(f: StoredFinding): string {
   const parts = [`**${SEVERITY_LABEL[f.severity]}** · ${f.category}`, sanitizeMarkdown(f.message)];
   if (f.rule_text) parts.push(`_Regra: ${sanitizeMarkdown(f.rule_text)}_`);
+  if (f.adr_title) parts.push(`_ADR: ${sanitizeMarkdown(f.adr_title)}_`);
   if (f.suggestion) parts.push(`💡 **Sugestão:** ${sanitizeMarkdown(f.suggestion)}`);
   if (f.code_snippet) parts.push("```\n" + f.code_snippet.replace(/```/g, "'''") + "\n```");
   return parts.join("\n\n");
@@ -126,7 +128,7 @@ export async function publishReviewToGithub(args: {
       supabase.from("review_history").select("review_summary").eq("id", args.reviewId).single(),
       supabase
         .from("review_findings")
-        .select("severity, category, rule_text, file_path, line_start, line_end, message, suggestion, code_snippet")
+        .select("severity, category, rule_text, adr_title, file_path, line_start, line_end, message, suggestion, code_snippet")
         .eq("review_id", args.reviewId),
     ]);
     if (reviewError || findingsError || !review) {
