@@ -5,7 +5,8 @@ import { RULE_CATEGORIES, RULE_SEVERITIES } from "../types.js";
 
 // Só PRs do GitHub. Repositório e número do PR são derivados da URL pelo banco,
 // para não poderem ser registrados de forma inconsistente com ela.
-const PR_URL_PATTERN = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/pull\/\d+$/;
+// O número do PR cabe em int (até 10 dígitos; o banco rejeita acima de 2147483647).
+const PR_URL_PATTERN = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/pull\/\d{1,10}$/;
 
 const MAX_SUMMARY_LENGTH = 2000;
 const MAX_FINDINGS = 100;
@@ -48,6 +49,7 @@ interface RecordReviewResult {
   info_not_counted: number;
   findings_recorded: number;
   snippets_omitted: number;
+  text_redacted: number;
 }
 
 /**
@@ -65,7 +67,8 @@ export function registerRecordReview(server: McpServer): void {
         "Cada chamada cria um novo registro (não substitui revisões anteriores do mesmo PR). " +
         "Apenas achados 'error' e 'warning' contam como problemas (issues_found, calculado pelo servidor); 'info' é informativo. " +
         "Uma lista de achados vazia significa revisão com sucesso, sem problemas. " +
-        "NUNCA coloque segredos, chaves, tokens ou senhas nos campos de texto. " +
+        "NUNCA coloque segredos, chaves, tokens ou senhas nos campos de texto: o banco substitui por um aviso " +
+        "os textos que parecem conter segredo (text_redacted na resposta). " +
         "Use somente depois de a revisão ter sido feita, e não para estimativas.",
       inputSchema: {
         team_id: z.string().uuid().describe("ID da equipe dona do repositório"),
