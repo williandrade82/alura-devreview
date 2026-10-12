@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { getSupabase } from "@/lib/supabase";
-import { FindingStatus, ReviewFinding, ReviewHistory } from "@/types";
+import { FindingStatus, ReviewFinding, ReviewHistory, ReviewKeyword } from "@/types";
 
 export const fetchHistory = createAsyncThunk(
   "history/fetchHistory",
@@ -18,17 +18,30 @@ export const fetchHistory = createAsyncThunk(
 const FINDING_COLUMNS =
   "id, review_id, severity, category, rule_id, rule_text, adr_id, adr_title, file_path, line_start, line_end, message, suggestion, code_snippet, status, resolved_at";
 
-/** Carrega os achados estruturados de uma revisão. */
+/** Carrega os achados estruturados e as palavras-chave (principais primeiro) de uma revisão. */
 export const fetchFindings = createAsyncThunk(
   "history/fetchFindings",
   async (reviewId: string) => {
-    const { data, error } = await getSupabase()
-      .from("review_findings")
-      .select(FINDING_COLUMNS)
-      .eq("review_id", reviewId)
-      .order("created_at", { ascending: true });
-    if (error) throw new Error(error.message);
-    return { reviewId, findings: data as ReviewFinding[] };
+    const supabase = getSupabase();
+    const [findings, keywords] = await Promise.all([
+      supabase
+        .from("review_findings")
+        .select(FINDING_COLUMNS)
+        .eq("review_id", reviewId)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("review_keywords")
+        .select("id, review_id, keyword, severity, position, reviewed_at")
+        .eq("review_id", reviewId)
+        .order("position", { ascending: true }),
+    ]);
+    if (findings.error) throw new Error(findings.error.message);
+    // As palavras-chave são complementares: se falharem, a revisão ainda abre sem elas.
+    return {
+      reviewId,
+      findings: findings.data as ReviewFinding[],
+      keywords: (keywords.error ? [] : keywords.data) as ReviewKeyword[],
+    };
   }
 );
 
@@ -49,6 +62,8 @@ export const updateFindingStatus = createAsyncThunk(
 
 export interface FindingsEntry {
   items: ReviewFinding[];
+  /** Palavras-chave da revisão, da mais importante para a menos. */
+  keywords: ReviewKeyword[];
   loading: boolean;
   error: string | null;
 }
@@ -99,6 +114,7 @@ const historySlice = createSlice({
         const prev = state.findingsByReview[action.meta.arg];
         state.findingsByReview[action.meta.arg] = {
           items: prev?.items ?? [],
+          keywords: prev?.keywords ?? [],
           loading: true,
           error: null,
         };
@@ -106,6 +122,7 @@ const historySlice = createSlice({
       .addCase(fetchFindings.fulfilled, (state, action) => {
         state.findingsByReview[action.payload.reviewId] = {
           items: action.payload.findings,
+          keywords: action.payload.keywords,
           loading: false,
           error: null,
         };
@@ -113,6 +130,7 @@ const historySlice = createSlice({
       .addCase(fetchFindings.rejected, (state, action) => {
         state.findingsByReview[action.meta.arg] = {
           items: [],
+          keywords: [],
           loading: false,
           error:
             action.error.message ?? "Não foi possível carregar os achados.",

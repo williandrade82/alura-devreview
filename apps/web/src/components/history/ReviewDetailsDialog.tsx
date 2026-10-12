@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { CategoryBadge } from "@/components/shared/CategoryBadge";
 import { SeverityBadge } from "@/components/shared/SeverityBadge";
 import { SuccessBadge } from "@/components/shared/SuccessBadge";
+import { KeywordChips } from "@/components/history/KeywordChips";
 import { AdrReference, useEnsureTeamAdrs } from "@/components/history/AdrReference";
 import { RuleReference } from "@/components/history/RuleReference";
 import { Button } from "@/components/ui/button";
@@ -222,6 +223,8 @@ export function ReviewDetailsDialog({
                 </dd>
               </div>
             </dl>
+
+            <KeywordChips keywords={entry?.keywords ?? []} />
 
             <section className="space-y-3">
               <div className="flex items-center gap-2">
