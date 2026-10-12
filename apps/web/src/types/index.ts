@@ -131,6 +131,8 @@ export interface TimeseriesPoint {
   errors: number;
   warnings: number;
   infos: number;
+  /** true no período atual, que ainda está acontecendo (por isso parcial). */
+  in_progress: boolean;
 }
 
 /** Um tema (palavra-chave) de get_team_keyword_trends, com o total do período anterior. */
@@ -151,6 +153,12 @@ export interface RepoStat {
   issues: number;
   avg_issues: number;
   by_category: Record<RuleCategory, number>;
+}
+
+/** Resultado de get_team_repo_stats: os repositórios exibidos e o total antes do corte por limite. */
+export interface RepoStats {
+  items: RepoStat[];
+  total: number;
 }
 
 /** Resultado de get_team_recommendation_stats. */

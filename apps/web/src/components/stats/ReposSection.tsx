@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { RepoStat, RuleCategory } from "@/types";
+import type { RepoStats, RuleCategory } from "@/types";
 
 const CATEGORIES: { key: RuleCategory; label: string }[] = [
   { key: "style", label: "Estilo" },
@@ -18,12 +18,13 @@ const CATEGORIES: { key: RuleCategory; label: string }[] = [
 
 interface ReposSectionProps {
   days: number;
-  repos: RepoStat[];
+  repos: RepoStats;
 }
 
 /** Repositórios do time com revisões, issues e um mapa de calor de achados por categoria. */
 export function ReposSection({ days, repos }: ReposSectionProps) {
-  const maxCell = Math.max(1, ...repos.flatMap((r) => CATEGORIES.map((c) => r.by_category[c.key])));
+  const { items, total } = repos;
+  const maxCell = Math.max(1, ...items.flatMap((r) => CATEGORIES.map((c) => r.by_category[c.key])));
 
   return (
     <section className="space-y-4" aria-labelledby="stats-repos">
@@ -33,7 +34,7 @@ export function ReposSection({ days, repos }: ReposSectionProps) {
         description={`Onde as revisões encontram mais problemas nos últimos ${days} dias.`}
       />
       <div className="rounded-lg border border-gray-800 bg-gray-900 p-5">
-        {repos.length === 0 ? (
+        {items.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhuma revisão no período.</p>
         ) : (
           <>
@@ -52,7 +53,7 @@ export function ReposSection({ days, repos }: ReposSectionProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {repos.map((r) => (
+                {items.map((r) => (
                   <TableRow key={r.repo} className="border-gray-800 hover:bg-gray-800/40">
                     <TableCell className="max-w-[16rem] truncate font-medium text-white" title={r.repo}>
                       {r.repo}
@@ -80,6 +81,11 @@ export function ReposSection({ days, repos }: ReposSectionProps) {
               Issues = erros e avisos. As colunas de categoria contam todos os achados (inclusive info); quanto mais
               escura a célula, mais achados. Revisões antigas, sem achados estruturados, aparecem com zeros.
             </p>
+            {total > items.length && (
+              <p className="mt-1 text-xs text-gray-500">
+                e mais {total - items.length} repositório{total - items.length > 1 ? "s" : ""} com menos issues.
+              </p>
+            )}
           </>
         )}
       </div>

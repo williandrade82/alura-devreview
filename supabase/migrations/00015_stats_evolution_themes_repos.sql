@@ -3,10 +3,13 @@
 --   * Todas as funções são security invoker (RLS de quem chama): cada membro só enxerga o
 --     próprio time e o admin, todos. Por isso são liberadas ao papel authenticated.
 --   * get_team_stats_timeseries: revisões e achados por dia ou por semana, incluindo os
---     períodos vazios (zeros), para a evolução não esconder lacunas.
+--     períodos vazios (zeros), para a evolução não esconder lacunas. O primeiro período é
+--     sempre completo (começa no início do dia/semana de p_since) e o atual vem marcado com
+--     in_progress, pois ainda está acontecendo.
 --   * get_team_keyword_trends: ranking de temas (palavras-chave) com o total do período
 --     anterior de mesmo tamanho, para mostrar se o tema sobe ou desce.
---   * get_team_repo_stats: revisões, issues e achados por categoria em cada repositório.
+--   * get_team_repo_stats: revisões, issues e achados por categoria em cada repositório;
+--     devolve {items, total}, com o total de repositórios antes do corte por p_limit.
 
 -- ---------------------------------------------------------------------------
 -- 1. Evolução no tempo
@@ -19,16 +22,24 @@ create or replace function public.get_team_stats_timeseries(
 returns jsonb
 language sql stable set search_path = ''
 as $$
-  with p as (
+  with p0 as (
     select
       case when p_bucket = 'day' then 'day' else 'week' end as bucket,
       -- Limita a série (no máximo ~2 anos) para o generate_series não crescer sem controle.
       greatest(p_since, now() - interval '2 years') as since
   ),
+  p as (
+    -- from_ts: início do primeiro período (completo); current_ts: início do período atual.
+    select
+      bucket,
+      date_trunc(bucket, since) as from_ts,
+      date_trunc(bucket, now()) as current_ts
+    from p0
+  ),
   series as (
     select generate_series(
-      date_trunc(p.bucket, p.since),
-      date_trunc(p.bucket, now()),
+      p.from_ts,
+      p.current_ts,
       case when p.bucket = 'day' then interval '1 day' else interval '1 week' end
     ) as bucket_start
     from p
@@ -39,7 +50,7 @@ as $$
       count(*)                            as reviews,
       coalesce(sum(h.issues_found), 0)    as issues
     from public.review_history h, p
-    where h.team_id = p_team_id and h.reviewed_at >= p.since
+    where h.team_id = p_team_id and h.reviewed_at >= p.from_ts
     group by 1
   ),
   fnd as (
@@ -50,7 +61,7 @@ as $$
       count(*) filter (where f.severity = 'info')     as infos
     from public.review_findings f
     join public.review_history h on h.id = f.review_id, p
-    where h.team_id = p_team_id and h.reviewed_at >= p.since
+    where h.team_id = p_team_id and h.reviewed_at >= p.from_ts
     group by 1
   )
   select coalesce(jsonb_agg(
@@ -62,7 +73,8 @@ as $$
                            else round(r.issues::numeric / r.reviews, 1) end,
       'errors',       coalesce(f.errors, 0),
       'warnings',     coalesce(f.warnings, 0),
-      'infos',        coalesce(f.infos, 0)
+      'infos',        coalesce(f.infos, 0),
+      'in_progress',  s.bucket_start = (select current_ts from p)
     ) order by s.bucket_start
   ), '[]'::jsonb)
   from series s
@@ -142,9 +154,8 @@ as $$
     from public.review_findings f
     join rev r on r.id = f.review_id
     group by r.repo, f.category
-  )
-  select coalesce(jsonb_agg(to_jsonb(x) order by x.issues desc, x.reviews desc, x.repo), '[]'::jsonb)
-  from (
+  ),
+  agg as (
     select
       r.repo,
       count(*)                                       as reviews,
@@ -158,9 +169,19 @@ as $$
       ) as by_category
     from rev r
     group by r.repo
-    order by sum(r.issues_found) desc, count(*) desc, r.repo
-    limit greatest(least(p_limit, 50), 1)
-  ) x;
+  )
+  select jsonb_build_object(
+    -- Total antes do corte: a tela avisa quando há mais repositórios que o exibido.
+    'total', (select count(*) from agg),
+    'items', (
+      select coalesce(jsonb_agg(to_jsonb(x) order by x.issues desc, x.reviews desc, x.repo), '[]'::jsonb)
+      from (
+        select * from agg
+        order by issues desc, reviews desc, repo
+        limit greatest(least(p_limit, 50), 1)
+      ) x
+    )
+  );
 $$;
 
 revoke execute on function public.get_team_repo_stats(uuid, timestamptz, int) from public, anon;

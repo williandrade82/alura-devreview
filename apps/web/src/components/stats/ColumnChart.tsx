@@ -2,6 +2,8 @@ export interface ColumnPoint {
   label: string;
   /** null = sem dado no período (ex.: média de uma semana sem revisões). */
   value: number | null;
+  /** true no período em andamento: a coluna é desenhada mais clara. */
+  partial?: boolean;
 }
 
 interface ColumnChartProps {
@@ -19,7 +21,9 @@ export function ColumnChart({ title, description, points, color = "bg-indigo-500
   const max = Math.max(0, ...points.map((p) => p.value ?? 0));
   // Mostra no máximo ~8 rótulos no eixo para não sobrepor texto em períodos longos.
   const step = Math.max(1, Math.ceil(points.length / MAX_X_LABELS));
-  const summary = points.map((p) => `${p.label}: ${p.value ?? "sem dados"}`).join(", ");
+  const label = (p: ColumnPoint) => `${p.label}${p.partial ? " (em andamento)" : ""}: ${p.value ?? "sem dados"}`;
+  const summary = points.map(label).join(", ");
+  const hasPartial = points.some((p) => p.partial);
 
   return (
     <div className="rounded-lg border border-gray-800 bg-gray-900 p-5">
@@ -36,13 +40,13 @@ export function ColumnChart({ title, description, points, color = "bg-indigo-500
                 <div
                   key={p.label}
                   className="flex h-full min-w-0 flex-1 flex-col justify-end"
-                  title={`${p.label}: ${p.value ?? "sem dados"}`}
+                  title={label(p)}
                 >
                   {p.value === null || p.value === 0 ? (
                     <div className="h-px w-full bg-gray-700" />
                   ) : (
                     <div
-                      className={`w-full rounded-t ${color}`}
+                      className={`w-full rounded-t ${color} ${p.partial ? "opacity-50" : ""}`}
                       style={{ height: `${Math.max(ratio * 100, 4)}%` }}
                     />
                   )}
@@ -59,6 +63,7 @@ export function ColumnChart({ title, description, points, color = "bg-indigo-500
           </div>
           <p className="mt-2 text-xs text-gray-500">
             Máximo: <span className="font-medium text-gray-300">{max}</span>
+            {hasPartial && " · coluna mais clara = período em andamento"}
           </p>
         </div>
       )}

@@ -30,13 +30,13 @@ export function EvolutionSection({ days, series }: EvolutionSectionProps) {
           <ColumnChart
             title="Revisões"
             description={`Quantidade de PRs revisados por ${unit}`}
-            points={series.map((p) => ({ label: formatBucket(p.bucket_start), value: p.reviews }))}
+            points={series.map((p) => ({ label: formatBucket(p.bucket_start), value: p.reviews, partial: p.in_progress }))}
           />
           <ColumnChart
             title="Média de issues"
             description={`Erros e avisos por PR, por ${unit} (sem coluna = sem revisões)`}
             color="bg-amber-500"
-            points={series.map((p) => ({ label: formatBucket(p.bucket_start), value: p.avg_issues }))}
+            points={series.map((p) => ({ label: formatBucket(p.bucket_start), value: p.avg_issues, partial: p.in_progress }))}
           />
         </div>
       )}

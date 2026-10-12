@@ -5,7 +5,7 @@ import type {
   KeywordTrend,
   RecommendationStats,
   ReferenceStats,
-  RepoStat,
+  RepoStats,
   StatsOverview,
   TimeseriesPoint,
 } from "@/types";
@@ -15,7 +15,29 @@ const REFERENCE_LIMIT = 10;
 const THEMES_LIMIT = 10;
 const REPOS_LIMIT = 10;
 
-/** Carrega as três agregações da tela de estatísticas (feitas no banco, com RLS do usuário). */
+/** Seções da tela de estatísticas, cada uma com a sua consulta (e o seu erro). */
+export type StatsSection = "overview" | "references" | "calibration" | "timeseries" | "themes" | "repos";
+export type StatsSectionErrors = Partial<Record<StatsSection, string>>;
+
+interface RpcResult {
+  data: unknown;
+  error: { message: string } | null;
+}
+
+/** Dado de uma seção, ou null se a consulta falhou (o erro vai para `errors`, só dessa seção). */
+function pick<T>(section: StatsSection, result: RpcResult, errors: StatsSectionErrors): T | null {
+  if (result.error) {
+    errors[section] = result.error.message;
+    return null;
+  }
+  return result.data as T;
+}
+
+/**
+ * Carrega as seis agregações da tela de estatísticas (feitas no banco, com RLS do usuário):
+ * visão geral, regras e ADRs, calibração, série temporal, temas e repositórios. Uma consulta
+ * que falha afeta só a sua seção; as demais continuam disponíveis.
+ */
 export const fetchStats = createAsyncThunk(
   "stats/fetchStats",
   async ({ teamId, days }: { teamId: string; days: number }) => {
@@ -37,21 +59,15 @@ export const fetchStats = createAsyncThunk(
       supabase.rpc("get_team_keyword_trends", { p_team_id: teamId, p_since: since, p_limit: THEMES_LIMIT }),
       supabase.rpc("get_team_repo_stats", { p_team_id: teamId, p_since: since, p_limit: REPOS_LIMIT }),
     ]);
-    const failed =
-      overview.error ??
-      references.error ??
-      calibration.error ??
-      timeseries.error ??
-      themes.error ??
-      repos.error;
-    if (failed) throw new Error(failed.message);
+    const errors: StatsSectionErrors = {};
     return {
-      overview: overview.data as StatsOverview,
-      references: references.data as ReferenceStats,
-      calibration: calibration.data as RecommendationStats,
-      timeseries: timeseries.data as TimeseriesPoint[],
-      themes: themes.data as KeywordTrend[],
-      repos: repos.data as RepoStat[],
+      overview: pick<StatsOverview>("overview", overview, errors),
+      references: pick<ReferenceStats>("references", references, errors),
+      calibration: pick<RecommendationStats>("calibration", calibration, errors),
+      timeseries: pick<TimeseriesPoint[]>("timeseries", timeseries, errors),
+      themes: pick<KeywordTrend[]>("themes", themes, errors),
+      repos: pick<RepoStats>("repos", repos, errors),
+      errors,
     };
   }
 );
@@ -65,8 +81,11 @@ interface StatsState {
   calibration: RecommendationStats | null;
   timeseries: TimeseriesPoint[] | null;
   themes: KeywordTrend[] | null;
-  repos: RepoStat[] | null;
+  repos: RepoStats | null;
+  /** Erro de cada seção cuja consulta falhou. */
+  sectionErrors: StatsSectionErrors;
   loading: boolean;
+  /** Falha geral (a chamada inteira falhou, ex.: sem rede). */
   error: string | null;
   /** Só a resposta da última chamada vale (troca rápida de time ou período). */
   requestId: string | null;
@@ -81,6 +100,7 @@ const initialState: StatsState = {
   timeseries: null,
   themes: null,
   repos: null,
+  sectionErrors: {},
   loading: false,
   error: null,
   requestId: null,
@@ -105,6 +125,7 @@ const statsSlice = createSlice({
           state.timeseries = null;
           state.themes = null;
           state.repos = null;
+          state.sectionErrors = {};
         }
         state.loading = true;
         state.error = null;
@@ -112,12 +133,9 @@ const statsSlice = createSlice({
       })
       .addCase(fetchStats.fulfilled, (state, action) => {
         if (state.requestId !== action.meta.requestId) return;
-        state.overview = action.payload.overview;
-        state.references = action.payload.references;
-        state.calibration = action.payload.calibration;
-        state.timeseries = action.payload.timeseries;
-        state.themes = action.payload.themes;
-        state.repos = action.payload.repos;
+        const { errors, ...data } = action.payload;
+        Object.assign(state, data);
+        state.sectionErrors = errors;
         state.loading = false;
       })
       .addCase(fetchStats.rejected, (state, action) => {
