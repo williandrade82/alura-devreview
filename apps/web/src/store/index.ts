@@ -5,6 +5,7 @@ import historyReducer from "./slices/historySlice";
 import adrsReducer from "./slices/adrsSlice";
 import membersReducer from "./slices/membersSlice";
 import teamsReducer from "./slices/teamsSlice";
+import statsReducer from "./slices/statsSlice";
 
 const appReducer = combineReducers({
   auth: authReducer,
@@ -13,6 +14,7 @@ const appReducer = combineReducers({
   adrs: adrsReducer,
   members: membersReducer,
   teams: teamsReducer,
+  stats: statsReducer,
 });
 
 type AppState = ReturnType<typeof appReducer>;
