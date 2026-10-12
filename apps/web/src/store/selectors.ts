@@ -122,3 +122,20 @@ export const selectLeaderCount = createSelector(
   [selectApprovedMembers],
   (members) => members.filter((member) => member.role === "leader").length
 );
+
+const selectAuthTeams = (state: RootState) => state.auth.teams;
+const selectMemberships = (state: RootState) => state.auth.memberships;
+const selectIsAdmin = (state: RootState) => state.auth.isAdmin;
+
+/** Times que o usuário pode abrir: todos para o admin, os próprios para os demais. */
+export const selectSwitchableTeams = createSelector(
+  [selectAuthTeams, selectMemberships, selectIsAdmin],
+  (teams, memberships, isAdmin) =>
+    isAdmin ? teams : teams.filter((team) => team.id in memberships)
+);
+
+/** Quantidade de times: todos para o admin, os do próprio usuário para os demais. */
+export const selectTeamsCount = createSelector(
+  [selectSwitchableTeams],
+  (teams) => teams.length
+);

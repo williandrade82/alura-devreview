@@ -1,13 +1,20 @@
 import { useMemo } from "react";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, ListChecks, History, BookOpen, GitPullRequest, LogOut, Users } from "lucide-react";
+import { LayoutDashboard, ListChecks, History, BookOpen, GitPullRequest, LogOut, Users, Building2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { signOut } from "@/store/slices/authSlice";
+import { selectSwitchableTeams } from "@/store/selectors";
+import { setActiveTeam, signOut } from "@/store/slices/authSlice";
 import { cn } from "@/lib/utils";
 
-const leaderNavItems = [
-  { to: "/membros", label: "Membros", icon: Users, end: false },
-];
+const membersNavItem = { to: "/membros", label: "Membros", icon: Users, end: false };
+const teamsNavItem = { to: "/times", label: "Times", icon: Building2, end: false };
 
 const navItems = [
   { to: "/", label: "Início", icon: LayoutDashboard, end: true },
@@ -18,11 +25,19 @@ const navItems = [
 
 export function Sidebar() {
   const dispatch = useAppDispatch();
-  const { email, role } = useAppSelector((s) => s.auth);
-  const visibleItems = useMemo(
-    () => (role === "leader" ? [...navItems, ...leaderNavItems] : navItems),
-    [role]
-  );
+  const { email, role, isAdmin, teamId } = useAppSelector((s) => s.auth);
+  const switchableTeams = useAppSelector(selectSwitchableTeams);
+  const visibleItems = useMemo(() => {
+    const items = [...navItems];
+    if (isAdmin || role === "leader") items.push(membersNavItem);
+    if (isAdmin) items.push(teamsNavItem);
+    return items;
+  }, [isAdmin, role]);
+  const roleLabel = isAdmin
+    ? "Administrador"
+    : role === "leader"
+      ? "Líder"
+      : "Membro";
 
   return (
     <aside className="flex w-60 flex-shrink-0 flex-col border-r border-gray-800 bg-gray-900">
@@ -35,6 +50,30 @@ export function Sidebar() {
           DevReview
         </span>
       </div>
+
+      {/* Time ativo (aparece quando há mais de um time para escolher) */}
+      {switchableTeams.length > 1 && (
+        <div className="border-b border-gray-800 px-3 py-3">
+          <Select
+            value={teamId ?? undefined}
+            onValueChange={(id) => dispatch(setActiveTeam(id))}
+          >
+            <SelectTrigger
+              aria-label="Time ativo"
+              className="border-gray-700 bg-gray-800 text-sm text-white"
+            >
+              <SelectValue placeholder="Selecione o time" />
+            </SelectTrigger>
+            <SelectContent className="border-gray-700 bg-gray-900">
+              {switchableTeams.map((team) => (
+                <SelectItem key={team.id} value={team.id}>
+                  {team.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 space-y-1 px-3 py-4">
@@ -64,7 +103,7 @@ export function Sidebar() {
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs text-gray-300" title={email}>{email}</p>
-              <p className="text-xs text-gray-600">{role === "leader" ? "Líder" : "Membro"}</p>
+              <p className="text-xs text-gray-600">{roleLabel}</p>
             </div>
             <button
               type="button"

@@ -19,6 +19,10 @@ const MembersPage = lazy(() =>
   import("@/pages/MembersPage").then((m) => ({ default: m.MembersPage }))
 );
 
+const TeamsPage = lazy(() =>
+  import("@/pages/TeamsPage").then((m) => ({ default: m.TeamsPage }))
+);
+
 function App() {
   return (
     <BrowserRouter>
@@ -31,6 +35,7 @@ function App() {
             <Route path="/historico" element={<HistoryPage />} />
             <Route path="/adrs" element={<AdrsPage />} />
             <Route path="/membros" element={<MembersPage />} />
+            <Route path="/times" element={<TeamsPage />} />
           </Routes>
         </Suspense>
       </AppLayout>

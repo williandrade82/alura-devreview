@@ -42,6 +42,26 @@ export const updateMember = createAsyncThunk(
   }
 );
 
+/**
+ * Associa um usuário que já tem conta ao time, já aprovado (só administradores).
+ * Se ele tinha um pedido pendente, o pedido é aprovado.
+ */
+export const addMember = createAsyncThunk(
+  "members/addMember",
+  async (
+    { teamId, email, role }: { teamId: string; email: string; role: TeamRole },
+    { dispatch }
+  ) => {
+    const { error } = await getSupabase().rpc("admin_add_member", {
+      p_team_id: teamId,
+      p_email: email,
+      p_role: role,
+    });
+    if (error) throw new Error(error.message);
+    await dispatch(fetchMembers(teamId));
+  }
+);
+
 /** Recusa um pedido ou remove um membro do time. */
 export const removeMember = createAsyncThunk(
   "members/removeMember",
@@ -103,6 +123,18 @@ const membersSlice = createSlice({
         state.busy = false;
         state.error =
           action.error.message ?? "Não foi possível atualizar o membro.";
+      })
+      .addCase(addMember.pending, (state) => {
+        state.busy = true;
+        state.error = null;
+      })
+      .addCase(addMember.fulfilled, (state) => {
+        state.busy = false;
+      })
+      .addCase(addMember.rejected, (state, action) => {
+        state.busy = false;
+        state.error =
+          action.error.message ?? "Não foi possível adicionar o membro.";
       })
       .addCase(removeMember.pending, (state) => {
         state.busy = true;

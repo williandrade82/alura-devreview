@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { GitPullRequest, ListChecks, BookOpen, AlertTriangle } from "lucide-react";
+import { GitPullRequest, ListChecks, BookOpen, AlertTriangle, Building2 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { StatCard } from "@/components/shared/StatCard";
 import { SeverityBadge } from "@/components/shared/SeverityBadge";
@@ -13,6 +13,7 @@ import {
   selectActiveRulesCount,
   selectDashboardAvgIssues,
   selectRecentPeriodHistory,
+  selectTeamsCount,
 } from "@/store/selectors";
 
 export function DashboardPage() {
@@ -22,6 +23,8 @@ export function DashboardPage() {
   const activeRules = useAppSelector(selectActiveRulesCount);
   const avgIssues = useAppSelector(selectDashboardAvgIssues);
   const adrs = useAppSelector((s) => s.adrs.items);
+  const teamsCount = useAppSelector(selectTeamsCount);
+  const isAdmin = useAppSelector((s) => s.auth.isAdmin);
 
   const teamId = useAppSelector((s) => s.auth.teamId);
 
@@ -41,7 +44,7 @@ export function DashboardPage() {
 
       <div className="flex-1 space-y-6 p-6">
         {/* Stat Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <StatCard
             title="Total de Reviews"
             value={history.length}
@@ -62,6 +65,19 @@ export function DashboardPage() {
             icon={BookOpen}
             iconColor="bg-purple-500/20 text-purple-400"
             description="Decisões arquiteturais"
+          />
+          <StatCard
+            title="Times"
+            value={teamsCount}
+            icon={Building2}
+            iconColor="bg-cyan-500/20 text-cyan-400"
+            description={
+              isAdmin
+                ? "Cadastrados na plataforma"
+                : teamsCount === 1
+                  ? "Time do qual você faz parte"
+                  : "Times dos quais você faz parte"
+            }
           />
           <StatCard
             title="Média de Issues"

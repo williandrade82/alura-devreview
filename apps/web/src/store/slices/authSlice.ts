@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { getSupabase } from "@/lib/supabase";
 import { Team, TeamMember, TeamRole } from "@/types";
+import { createTeam, renameTeam } from "./teamsSlice";
 
 export type AuthStatus =
   | "loading"
@@ -12,30 +13,51 @@ export type AuthStatus =
 
 interface Membership {
   email: string;
-  teamId: string | null;
-  role: TeamRole | null;
+  isAdmin: boolean;
+  /** Papel do usuário em cada time onde ele está aprovado. */
+  memberships: Record<string, TeamRole>;
+  /** Todos os times (a lista é pública; serve ao seletor e ao cadastro). */
+  teams: Team[];
   hasPending: boolean;
 }
 
-/** Busca o time/papel do usuário logado. O RLS só devolve as linhas dele. */
+/**
+ * Carrega o perfil do usuário logado: se é administrador, em quais times está
+ * aprovado e com qual papel. O RLS só devolve as linhas do próprio usuário.
+ */
 async function loadMembership(
   userId: string,
   email: string
 ): Promise<Membership> {
-  const { data, error } = await getSupabase()
-    .from("team_members")
-    .select("team_id, role, status")
-    .eq("user_id", userId);
-  if (error) throw new Error(error.message);
-  const rows = (data ?? []) as Pick<TeamMember, "team_id" | "role" | "status">[];
-  // Prefere um vínculo aprovado; senão mostra que há pedido pendente.
-  const approved = rows.find((r) => r.status === "approved");
-  const pending = rows.find((r) => r.status === "pending");
+  const supabase = getSupabase();
+  const [members, admin, teams] = await Promise.all([
+    supabase
+      .from("team_members")
+      .select("team_id, role, status")
+      .eq("user_id", userId),
+    supabase.from("platform_admins").select("user_id").eq("user_id", userId),
+    supabase.from("teams").select("id, name").order("name"),
+  ]);
+  if (members.error) throw new Error(members.error.message);
+  if (admin.error) throw new Error(admin.error.message);
+  if (teams.error) throw new Error(teams.error.message);
+
+  const rows = (members.data ?? []) as Pick<
+    TeamMember,
+    "team_id" | "role" | "status"
+  >[];
+  const memberships: Record<string, TeamRole> = {};
+  for (const row of rows) {
+    if (row.status === "approved") memberships[row.team_id] = row.role;
+  }
   return {
     email,
-    teamId: approved?.team_id ?? null,
-    role: approved?.role ?? null,
-    hasPending: !approved && Boolean(pending),
+    isAdmin: (admin.data ?? []).length > 0,
+    memberships,
+    teams: (teams.data ?? []) as Team[],
+    hasPending:
+      Object.keys(memberships).length === 0 &&
+      rows.some((r) => r.status === "pending"),
   };
 }
 
@@ -132,7 +154,11 @@ interface AuthState {
   status: AuthStatus;
   email: string | null;
   teamId: string | null;
+  /** Papel do usuário no time ativo (`null` para um admin fora do time). */
   role: TeamRole | null;
+  isAdmin: boolean;
+  /** Papel do usuário em cada time onde está aprovado. */
+  memberships: Record<string, TeamRole>;
   teams: Team[];
   submitting: boolean;
   error: string | null;
@@ -149,6 +175,8 @@ const initialState: AuthState = {
   email: null,
   teamId: null,
   role: null,
+  isAdmin: false,
+  memberships: {},
   teams: [],
   submitting: false,
   error: null,
@@ -157,6 +185,10 @@ const initialState: AuthState = {
   linkError: null,
 };
 
+function sortTeams(teams: Team[]): Team[] {
+  return [...teams].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+}
+
 function applyMembership(state: AuthState, m: Membership | null) {
   if (!m) {
     Object.assign(state, {
@@ -164,17 +196,32 @@ function applyMembership(state: AuthState, m: Membership | null) {
       email: null,
       teamId: null,
       role: null,
+      isAdmin: false,
+      memberships: {},
     });
     return;
   }
   state.email = m.email;
-  state.teamId = m.teamId;
-  state.role = m.role;
-  state.status = m.teamId
-    ? "ready"
-    : m.hasPending
-      ? "pending-approval"
-      : "no-membership";
+  state.isAdmin = m.isAdmin;
+  state.memberships = m.memberships;
+  state.teams = m.teams;
+
+  // Mantém o time ativo se o usuário ainda tem acesso a ele; senão escolhe
+  // o primeiro time dele (o admin, sem time, cai no primeiro da lista).
+  const teamIds = Object.keys(m.memberships);
+  const canAccess = (id: string | null) =>
+    id !== null && (m.isAdmin ? m.teams.some((t) => t.id === id) : id in m.memberships);
+  state.teamId = canAccess(state.teamId)
+    ? state.teamId
+    : (teamIds[0] ?? (m.isAdmin ? (m.teams[0]?.id ?? null) : null));
+  state.role = state.teamId ? (m.memberships[state.teamId] ?? null) : null;
+
+  state.status =
+    state.teamId || m.isAdmin
+      ? "ready"
+      : m.hasPending
+        ? "pending-approval"
+        : "no-membership";
 }
 
 const authSlice = createSlice({
@@ -184,6 +231,16 @@ const authSlice = createSlice({
     /** Sessão encerrada fora do app (outra aba, token expirado). */
     sessionEnded(state) {
       applyMembership(state, null);
+    },
+    /** Troca o time em que o usuário está trabalhando (admin ou multi-time). */
+    setActiveTeam(state, action: PayloadAction<string>) {
+      const id = action.payload;
+      const allowed = state.isAdmin
+        ? state.teams.some((t) => t.id === id)
+        : id in state.memberships;
+      if (!allowed) return;
+      state.teamId = id;
+      state.role = state.memberships[id] ?? null;
     },
     clearAuthMessages(state) {
       state.error = null;
@@ -255,6 +312,18 @@ const authSlice = createSlice({
       .addCase(fetchTeams.fulfilled, (state, action) => {
         state.teams = action.payload;
       })
+      .addCase(createTeam.fulfilled, (state, action) => {
+        state.teams = sortTeams([...state.teams, action.payload]);
+        // Primeiro time criado por um admin sem time: já o torna o ativo.
+        if (!state.teamId) state.teamId = action.payload.id;
+      })
+      .addCase(renameTeam.fulfilled, (state, action) => {
+        state.teams = sortTeams(
+          state.teams.map((t) =>
+            t.id === action.payload.id ? action.payload : t
+          )
+        );
+      })
       .addCase(signUp.pending, (state) => {
         state.submitting = true;
         state.error = null;
@@ -282,6 +351,12 @@ const authSlice = createSlice({
   },
 });
 
-export const { sessionEnded, clearAuthMessages, recoveryStarted, linkFailed } =
+export const {
+  sessionEnded,
+  setActiveTeam,
+  clearAuthMessages,
+  recoveryStarted,
+  linkFailed,
+} =
   authSlice.actions;
 export default authSlice.reducer;

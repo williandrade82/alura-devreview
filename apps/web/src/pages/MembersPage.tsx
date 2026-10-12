@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { Check, X, Crown } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
@@ -17,16 +18,84 @@ import {
   selectPendingMembers,
 } from "@/store/selectors";
 import {
+  addMember,
   fetchMembers,
   updateMember,
   removeMember,
 } from "@/store/slices/membersSlice";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TeamRole } from "@/types";
 
 const MAX_LEADERS = 2;
+
+/** Associa ao time um usuário que já tem conta (só administradores). */
+function AddMemberForm({ teamId, busy }: { teamId: string; busy: boolean }) {
+  const dispatch = useAppDispatch();
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<TeamRole>("member");
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const result = await dispatch(
+      addMember({ teamId, email: email.trim(), role })
+    );
+    if (addMember.fulfilled.match(result)) {
+      setEmail("");
+      setRole("member");
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex items-end gap-3">
+      <div className="flex-1 space-y-1.5">
+        <label htmlFor="add-member-email" className="text-sm text-gray-300">
+          Adicionar usuário existente ao time
+        </label>
+        <Input
+          id="add-member-email"
+          type="email"
+          required
+          placeholder="email@exemplo.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-600"
+        />
+      </div>
+      <Select value={role} onValueChange={(v) => setRole(v as TeamRole)}>
+        <SelectTrigger className="w-32 border-gray-700 bg-gray-800 text-white">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="border-gray-700 bg-gray-900">
+          <SelectItem value="member">Membro</SelectItem>
+          <SelectItem value="leader">Líder</SelectItem>
+        </SelectContent>
+      </Select>
+      <Button
+        type="submit"
+        disabled={busy || email.trim() === ""}
+        className="bg-indigo-600 hover:bg-indigo-500"
+      >
+        Adicionar
+      </Button>
+    </form>
+  );
+}
 
 export function MembersPage() {
   const dispatch = useAppDispatch();
   const teamId = useAppSelector((s) => s.auth.teamId);
+  const isAdmin = useAppSelector((s) => s.auth.isAdmin);
+  const isLeader = useAppSelector((s) => s.auth.role === "leader");
+  const teamName = useAppSelector(
+    (s) => s.auth.teams.find((t) => t.id === s.auth.teamId)?.name
+  );
   const myEmail = useAppSelector((s) => s.auth.email);
   const { loading, busy, error } = useAppSelector((s) => s.members);
   const pending = useAppSelector(selectPendingMembers);
@@ -37,11 +106,12 @@ export function MembersPage() {
     if (teamId) dispatch(fetchMembers(teamId));
   }, [dispatch, teamId]);
 
+  if (!isAdmin && !isLeader) return <Navigate to="/" replace />;
   if (!teamId) return null;
 
   return (
     <div className="flex flex-col overflow-y-auto">
-      <Header title="Membros do time" />
+      <Header title={teamName ? `Membros — ${teamName}` : "Membros do time"} />
 
       <div className="flex-1 space-y-6 p-6">
         {error && (
@@ -49,6 +119,8 @@ export function MembersPage() {
             {error}
           </p>
         )}
+
+        {isAdmin && <AddMemberForm teamId={teamId} busy={busy} />}
 
         <section className="space-y-2">
           <h2 className="text-sm font-medium text-gray-300">
