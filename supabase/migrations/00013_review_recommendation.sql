@@ -10,8 +10,9 @@
 --     estatística de concordância modelo x humano.
 --   * get_team_recommendation_stats: concordância, falsos aprovados e falsos bloqueios.
 --
--- ATENÇÃO: record_review_with_findings ganha 4 parâmetros; a versão de 7 parâmetros é removida
--- para não haver duas sobrecargas ambíguas na chamada via RPC. A base é a versão da 00011 (se a 00012_review_keywords for aplicada antes, reincorpore p_keywords aqui).
+-- ATENÇÃO: record_review_with_findings ganha 4 parâmetros; a versão de 8 parâmetros (00012,
+-- com p_keywords) é removida para não haver duas sobrecargas ambíguas na chamada via RPC.
+-- A base é a versão da 00012: toda a validação e gravação de palavras-chave é preservada.
 
 -- ---------------------------------------------------------------------------
 -- 1. Colunas
@@ -41,7 +42,7 @@ create index if not exists review_history_recommendation_idx
 -- ---------------------------------------------------------------------------
 -- 2. Gravação (substitui a função de 7 parâmetros)
 -- ---------------------------------------------------------------------------
-drop function if exists public.record_review_with_findings(uuid, text, text, text, text, text, jsonb);
+drop function if exists public.record_review_with_findings(uuid, text, text, text, text, text, jsonb, jsonb);
 
 create or replace function public.record_review_with_findings(
   p_team_id             uuid,
@@ -51,6 +52,7 @@ create or replace function public.record_review_with_findings(
   p_pr_title            text    default null,
   p_reviewer            text    default null,
   p_findings            jsonb   default '[]'::jsonb,
+  p_keywords            jsonb   default '[]'::jsonb,
   p_recommendation      text    default null,
   p_recommendation_reason text  default null,
   p_confidence          text    default null,
@@ -76,6 +78,9 @@ declare
   v_reason     text := nullif(btrim(p_recommendation_reason), '');
   v_injection  boolean := coalesce(p_injection_suspected, false);
   v_redacted_findings int;
+  v_elem       jsonb;
+  v_kw         text;
+  v_kw_count   int;
 begin
   v_match := regexp_match(
     p_pr_url,
@@ -101,6 +106,36 @@ begin
   if jsonb_array_length(p_findings) > 100 then
     raise exception 'No máximo 100 achados por revisão' using errcode = 'invalid_parameter_value';
   end if;
+
+  -- Palavras-chave: validadas antes de gravar qualquer coisa.
+  if p_keywords is null or jsonb_typeof(p_keywords) <> 'array' then
+    raise exception 'keywords deve ser uma lista' using errcode = 'invalid_parameter_value';
+  end if;
+  if jsonb_array_length(p_keywords) > 5 then
+    raise exception 'No máximo 5 palavras-chave por revisão' using errcode = 'invalid_parameter_value';
+  end if;
+  for v_elem in select e.value from jsonb_array_elements(p_keywords) as e loop
+    if jsonb_typeof(v_elem) <> 'object'
+       or jsonb_typeof(v_elem -> 'keyword') is distinct from 'string'
+       or jsonb_typeof(v_elem -> 'severity') is distinct from 'string' then
+      raise exception 'Cada palavra-chave deve ter keyword e severity (texto)'
+        using errcode = 'invalid_parameter_value';
+    end if;
+    v_kw := btrim(regexp_replace(v_elem ->> 'keyword', '\s+', ' ', 'g'));
+    if char_length(v_kw) not between 2 and 40
+       or array_length(string_to_array(v_kw, ' '), 1) > 3
+       or v_kw !~ '^[[:alnum:]][[:alnum:] ./+#_-]*$' then
+      raise exception 'Palavra-chave inválida (%): use de 1 a 3 palavras, de 2 a 40 caracteres', v_kw
+        using errcode = 'invalid_parameter_value';
+    end if;
+    if private.contains_secret(v_kw) then
+      raise exception 'Palavra-chave com aparência de dado sensível' using errcode = 'invalid_parameter_value';
+    end if;
+    if (v_elem ->> 'severity') not in ('error', 'warning', 'info') then
+      raise exception 'Severidade da palavra-chave deve ser error, warning ou info'
+        using errcode = 'invalid_parameter_value';
+    end if;
+  end loop;
 
   -- Toda regra citada precisa pertencer ao time da revisão.
   if exists (
@@ -217,6 +252,29 @@ begin
   left join public.review_rules r on r.id = f.rule_id
   left join public.adrs a on a.id = f.adr_id;
 
+  -- Palavras repetidas (mesma forma normalizada) viram uma só, com a maior severidade.
+  insert into public.review_keywords (
+    review_id, team_id, keyword, keyword_key, severity, position, reviewed_at
+  )
+  select
+    v_review_id, p_team_id, d.kw, d.kw_key, d.sev,
+    (row_number() over (order by d.ord))::smallint, v_reviewed_at
+  from (
+    select distinct on (n.kw_key) n.kw, n.kw_key, n.sev, n.ord
+    from (
+      select
+        btrim(regexp_replace(e.value ->> 'keyword', '\s+', ' ', 'g')) as kw,
+        private.normalize_keyword(e.value ->> 'keyword') as kw_key,
+        e.value ->> 'severity' as sev,
+        e.ord
+      from jsonb_array_elements(p_keywords) with ordinality as e(value, ord)
+    ) n
+    order by n.kw_key,
+      case n.sev when 'error' then 0 when 'warning' then 1 else 2 end,
+      n.ord
+  ) d;
+  get diagnostics v_kw_count = row_count;
+
   select count(*) into v_redacted_findings
   from jsonb_to_recordset(p_findings) as f(message text, suggestion text)
   where private.contains_secret(f.message) or private.contains_secret(f.suggestion);
@@ -239,14 +297,15 @@ begin
     'findings_recorded', jsonb_array_length(p_findings),
     'snippets_omitted', v_omitted,
     'text_redacted', v_redacted,
+    'keywords_recorded', v_kw_count,
     'recommendation', p_recommendation
   );
 end;
 $$;
 
-revoke execute on function public.record_review_with_findings(uuid, text, text, text, text, text, jsonb, text, text, text, boolean)
+revoke execute on function public.record_review_with_findings(uuid, text, text, text, text, text, jsonb, jsonb, text, text, text, boolean)
   from public, anon, authenticated;
-grant  execute on function public.record_review_with_findings(uuid, text, text, text, text, text, jsonb, text, text, text, boolean)
+grant  execute on function public.record_review_with_findings(uuid, text, text, text, text, text, jsonb, jsonb, text, text, text, boolean)
   to service_role;
 
 -- ---------------------------------------------------------------------------

@@ -91,7 +91,18 @@ interface StoredReview {
   recommendation_reason: string | null;
 }
 
-function buildSummary(review: StoredReview, findings: StoredFinding[], issues: number, inlineIds: Set<StoredFinding>): string {
+interface StoredKeyword {
+  keyword: string;
+  severity: keyof typeof SEVERITY_ORDER;
+}
+
+function buildSummary(
+  review: StoredReview,
+  findings: StoredFinding[],
+  issues: number,
+  inlineIds: Set<StoredFinding>,
+  keywords: StoredKeyword[]
+): string {
   const lines = [
     "## DevReview",
     "",
@@ -99,6 +110,9 @@ function buildSummary(review: StoredReview, findings: StoredFinding[], issues: n
     "",
     `**Problemas (erro + aviso):** ${issues} · **Achados:** ${findings.length}`,
   ];
+  if (keywords.length > 0) {
+    lines.push("", `**Tópicos:** ${keywords.map((k) => `\`${k.keyword.replace(/`/g, "'")}\``).join(" · ")}`);
+  }
 
   // Informativo: não usa o estado de review do GitHub, então não aprova nem bloqueia o PR.
   if (review.recommendation) {
@@ -145,7 +159,11 @@ export async function publishReviewToGithub(args: {
 
   try {
     const supabase = getSupabase();
-    const [{ data: review, error: reviewError }, { data: findingRows, error: findingsError }] = await Promise.all([
+    const [
+      { data: review, error: reviewError },
+      { data: findingRows, error: findingsError },
+      { data: keywordRows },
+    ] = await Promise.all([
       supabase
         .from("review_history")
         .select("review_summary, recommendation, recommendation_reason")
@@ -155,7 +173,13 @@ export async function publishReviewToGithub(args: {
         .from("review_findings")
         .select("severity, category, rule_text, adr_title, file_path, line_start, line_end, message, suggestion, code_snippet")
         .eq("review_id", args.reviewId),
+      supabase
+        .from("review_keywords")
+        .select("keyword, severity")
+        .eq("review_id", args.reviewId)
+        .order("position", { ascending: true }),
     ]);
+    const keywords = (keywordRows ?? []) as StoredKeyword[];
     if (reviewError || findingsError || !review) {
       return { published: false, reason: "error", message: "Revisão gravada, mas não foi possível ler seu conteúdo para publicar no PR." };
     }
@@ -184,7 +208,7 @@ export async function publishReviewToGithub(args: {
         body: {
           ...commit,
           event: "COMMENT",
-          body: buildSummary(review as StoredReview, findings, args.issues, new Set(inline)),
+          body: buildSummary(review as StoredReview, findings, args.issues, new Set(inline), keywords),
           comments: inlineComments,
         },
       });
@@ -196,7 +220,7 @@ export async function publishReviewToGithub(args: {
         body: {
           ...commit,
           event: "COMMENT",
-          body: buildSummary(review as StoredReview, findings, args.issues, new Set()),
+          body: buildSummary(review as StoredReview, findings, args.issues, new Set(), keywords),
         },
       });
     }
