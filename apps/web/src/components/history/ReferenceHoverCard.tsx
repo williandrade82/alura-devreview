@@ -1,4 +1,4 @@
-import { ReactNode, useRef, useState, WheelEvent } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { Pin } from "lucide-react";
 import {
   HoverCard,
@@ -6,12 +6,31 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 
+const LINE_HEIGHT_PX = 16;
+
 /**
- * O modal bloqueia a rolagem de tudo que está fora dele, e o card flutuante fica fora do modal:
- * sem isto a roda do mouse não rolaria um card com texto longo. A rolagem é aplicada à mão.
+ * Rolagem da roda do mouse aplicada à mão no card. O modal bloqueia a rolagem nativa de tudo que
+ * está fora dele, e o card flutuante fica fora do modal. O listener é nativo e não passivo para
+ * poder cancelar a rolagem nativa (sem rolar em dobro) e converte deltaMode em pixels: o Firefox
+ * envia a roda em linhas (deltaY ~ 3), não em pixels.
  */
-function scrollOnWheel(event: WheelEvent<HTMLElement>) {
-  event.currentTarget.scrollTop += event.deltaY;
+function useWheelScroll(node: HTMLElement | null) {
+  useEffect(() => {
+    if (!node) return;
+    function onWheel(event: globalThis.WheelEvent) {
+      if (!node || node.scrollHeight <= node.clientHeight) return;
+      const unit =
+        event.deltaMode === 1
+          ? LINE_HEIGHT_PX
+          : event.deltaMode === 2
+            ? node.clientHeight
+            : 1;
+      event.preventDefault();
+      node.scrollTop += event.deltaY * unit;
+    }
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => node.removeEventListener("wheel", onWheel);
+  }, [node]);
 }
 
 interface ReferenceHoverCardProps {
@@ -39,6 +58,8 @@ export function ReferenceHoverCard({
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const titleRef = useRef<HTMLButtonElement>(null);
+  const [card, setCard] = useState<HTMLDivElement | null>(null);
+  useWheelScroll(card);
 
   function close() {
     setPinned(false);
@@ -81,7 +102,7 @@ export function ReferenceHoverCard({
         </p>
       </HoverCardTrigger>
       <HoverCardContent
-        onWheel={scrollOnWheel}
+        ref={setCard}
         onEscapeKeyDown={close}
         onPointerDownOutside={(event) => {
           // O clique no próprio título é tratado por togglePin.
