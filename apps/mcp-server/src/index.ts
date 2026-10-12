@@ -9,6 +9,7 @@ import { registerAdrTools } from "./tools/adr.js";
 import { registerMetricsTools } from "./tools/metrics.js";
 import { registerRecordReview } from "./tools/record-review.js";
 import { registerGithubPrTools } from "./tools/github-pr.js";
+import { registerRecommendationTools } from "./tools/recommendations.js";
 import { registerReviewPrompt } from "./prompts/review-pull-request.js";
 import { SERVER_INSTRUCTIONS } from "./lib/security-prompt.js";
 
@@ -26,6 +27,7 @@ async function main(): Promise<void> {
   registerMetricsTools(server);
   registerGithubPrTools(server);
   registerRecordReview(server);
+  registerRecommendationTools(server);
 
   await server.connect(new StdioServerTransport());
   console.error("DevReview MCP server rodando via stdio");
