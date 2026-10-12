@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getSupabase } from "../lib/supabase.js";
+import { publishReviewToGithub, PUBLISH_DISABLED } from "../lib/publish-review.js";
 import { RULE_CATEGORIES, RULE_SEVERITIES } from "../types.js";
 
 // Só PRs do GitHub. Repositório e número do PR são derivados da URL pelo banco,
@@ -63,7 +64,9 @@ export function registerRecordReview(server: McpServer): void {
     {
       title: "Registrar revisão de PR no histórico",
       description:
-        "Grava no histórico da equipe uma revisão de pull request já concluída e publicada, com seus achados estruturados. " +
+        "Grava no histórico da equipe uma revisão de pull request já concluída, com seus achados estruturados, " +
+        "e, se o MCP tiver GITHUB_PAT, publica o resultado como comentário (review COMMENT) no PR. " +
+        "Sem token, a revisão só é gravada e a resposta traz o aviso em github.message: repasse-o ao usuário. " +
         "Cada chamada cria um novo registro (não substitui revisões anteriores do mesmo PR). " +
         "Apenas achados 'error' e 'warning' contam como problemas (issues_found, calculado pelo servidor); 'info' é informativo. " +
         "Uma lista de achados vazia significa revisão com sucesso, sem problemas. " +
@@ -95,9 +98,13 @@ export function registerRecordReview(server: McpServer): void {
           .describe("Commit do PR que foi revisado"),
         pr_title: z.string().trim().min(1).max(300).optional().describe("Título do PR"),
         reviewer: z.string().trim().min(1).max(100).optional().describe("Quem revisou, ex.: claude-code"),
+        publish: z
+          .boolean()
+          .default(true)
+          .describe("Se true (padrão), publica a revisão como comentário no PR quando houver GITHUB_PAT"),
       },
     },
-    async ({ team_id, pr_url, review_summary, findings, commit_sha, pr_title, reviewer }) => {
+    async ({ team_id, pr_url, review_summary, findings, commit_sha, pr_title, reviewer, publish }) => {
       const { data, error } = await getSupabase().rpc("record_review_with_findings", {
         p_team_id: team_id,
         p_pr_url: pr_url,
@@ -116,8 +123,18 @@ export function registerRecordReview(server: McpServer): void {
         );
       }
 
+      const result = data as RecordReviewResult;
+      const github = publish
+        ? await publishReviewToGithub({
+            reviewId: result.id,
+            prUrl: pr_url,
+            commitSha: commit_sha?.toLowerCase(),
+            issues: result.issues_found,
+          })
+        : PUBLISH_DISABLED;
+
       return {
-        content: [{ type: "text", text: JSON.stringify(data as RecordReviewResult) }],
+        content: [{ type: "text", text: JSON.stringify({ ...result, github }) }],
       };
     }
   );
