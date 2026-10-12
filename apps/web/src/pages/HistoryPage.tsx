@@ -13,14 +13,13 @@ import {
 } from "@/components/ui/table";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchHistory, setRepoFilter } from "@/store/slices/historySlice";
+import {
+  issueSeverity,
+  selectFilteredAvgIssues,
+  selectFilteredHistory,
+  selectFilteredTotalIssues,
+} from "@/store/selectors";
 import { TEAM_ID } from "@/lib/team";
-import { RuleSeverity } from "@/types";
-
-function issueSeverity(issues: number): RuleSeverity {
-  if (issues >= 4) return "error";
-  if (issues > 0) return "warning";
-  return "info";
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", {
@@ -32,21 +31,14 @@ function formatDate(iso: string): string {
 
 export function HistoryPage() {
   const dispatch = useAppDispatch();
-  const { items: history, repoFilter } = useAppSelector((s) => s.history);
+  const repoFilter = useAppSelector((s) => s.history.repoFilter);
+  const filtered = useAppSelector(selectFilteredHistory);
+  const totalIssues = useAppSelector(selectFilteredTotalIssues);
+  const avgIssues = useAppSelector(selectFilteredAvgIssues);
 
   useEffect(() => {
     dispatch(fetchHistory(TEAM_ID));
   }, [dispatch]);
-
-  const filtered = history.filter(
-    (r) =>
-      repoFilter === "" ||
-      r.repo.toLowerCase().includes(repoFilter.toLowerCase())
-  );
-
-  const totalIssues = filtered.reduce((acc, r) => acc + r.issues_found, 0);
-  const avgIssues =
-    filtered.length > 0 ? (totalIssues / filtered.length).toFixed(1) : "0";
 
   return (
     <div className="flex flex-col overflow-y-auto">

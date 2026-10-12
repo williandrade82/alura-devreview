@@ -2,6 +2,9 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getSupabase } from "../lib/supabase.js";
 
+/**
+ * Registra a tool `search_teams_adrs` (busca de ADRs aceitos por palavra-chave).
+ */
 export function registerAdrTools(server: McpServer): void {
   server.registerTool(
     "search_teams_adrs",

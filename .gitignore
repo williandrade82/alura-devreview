@@ -12,3 +12,7 @@ docs/
 .mcp.json
 # Cache do Supabase CLI (guarda project-ref e URLs ao rodar `supabase link`).
 supabase/.temp/
+
+# Logs e configuração local do Claude Code.
+debug.log
+.claude/

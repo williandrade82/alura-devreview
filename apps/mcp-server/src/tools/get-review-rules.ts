@@ -3,6 +3,9 @@ import { z } from "zod";
 import { getSupabase } from "../lib/supabase.js";
 import { RULE_CATEGORIES, RULE_SEVERITIES } from "../types.js";
 
+/**
+ * Registra a tool `get_review_rules` (regras de code review, com filtros opcionais).
+ */
 export function registerGetReviewRules(server: McpServer): void {
   server.registerTool(
     "get_review_rules",

@@ -1,7 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-// Ainda não usado por nenhuma tool: ponto de integração para o Módulo 4.
-
 let client: SupabaseClient | null = null;
 
 /**

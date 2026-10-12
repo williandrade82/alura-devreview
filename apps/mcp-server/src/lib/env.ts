@@ -6,7 +6,7 @@ const ENV_PATH = fileURLToPath(new URL("../../.env", import.meta.url));
 
 /**
  * Carrega apps/mcp-server/.env, se existir. Variáveis já definidas no ambiente
- * têm precedência. Sem o arquivo, o server sobe normalmente (tools mock não dependem dele).
+ * têm precedência. Sem o arquivo, o server sobe normalmente e só falha ao usar o Supabase sem as variáveis.
  */
 export function loadEnv(): void {
   try {

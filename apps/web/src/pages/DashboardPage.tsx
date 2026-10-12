@@ -8,18 +8,20 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchRules } from "@/store/slices/rulesSlice";
 import { fetchHistory } from "@/store/slices/historySlice";
 import { fetchAdrs } from "@/store/slices/adrsSlice";
+import {
+  issueSeverity,
+  selectActiveRulesCount,
+  selectDashboardAvgIssues,
+  selectRecentPeriodHistory,
+} from "@/store/selectors";
 import { TEAM_ID } from "@/lib/team";
-
-function issueSeverity(issues: number): "error" | "warning" | "info" {
-  if (issues >= 4) return "error";
-  if (issues > 0) return "warning";
-  return "info";
-}
 
 export function DashboardPage() {
   const dispatch = useAppDispatch();
   const rules = useAppSelector((s) => s.rules.items);
-  const history = useAppSelector((s) => s.history.items);
+  const history = useAppSelector(selectRecentPeriodHistory);
+  const activeRules = useAppSelector(selectActiveRulesCount);
+  const avgIssues = useAppSelector(selectDashboardAvgIssues);
   const adrs = useAppSelector((s) => s.adrs.items);
 
   useEffect(() => {
@@ -27,13 +29,6 @@ export function DashboardPage() {
     dispatch(fetchHistory(TEAM_ID));
     dispatch(fetchAdrs(TEAM_ID));
   }, [dispatch]);
-
-  const activeRules = rules.filter((r) => r.active).length;
-  const totalIssues = history.reduce((acc, r) => acc + r.issues_found, 0);
-  const avgIssues =
-    history.length > 0
-      ? (totalIssues / history.length).toFixed(1)
-      : "0";
 
   const recentHistory = history.slice(0, 3);
   const recentRules = rules.slice(0, 4);
