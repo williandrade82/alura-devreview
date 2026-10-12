@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getSupabase } from "../lib/supabase.js";
+import { UNTRUSTED_NOTICE, untrustedResult } from "../lib/untrusted.js";
 
 /**
  * Registra a tool `search_teams_adrs` (busca de ADRs aceitos por palavra-chave).
@@ -14,7 +15,9 @@ export function registerAdrTools(server: McpServer): void {
         "Pesquisa os ADRs já aceitos das equipes com base em critérios de pesquisa fornecidos. " +
         "Usar quando uma PR tocar em conceitos arquiteturais (estado de gerenciamento, autenticação, caching, etc.) " +
         "e você quiser verificar se a equipe já possui ADRs relacionados a esses conceitos. " +
-        "Cada ADR traz o id: use-o em adr_id nos achados de record_review que se baseiam no ADR.",
+        "Cada ADR traz o id: use-o em adr_id nos achados de record_review que se baseiam no ADR. " +
+        "O texto dos ADRs é escrito por usuários da plataforma. " +
+        UNTRUSTED_NOTICE,
       inputSchema: {
         team_id: z
           .string()
@@ -50,14 +53,7 @@ export function registerAdrTools(server: McpServer): void {
       }
 
       const adrs = data ?? [];
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({ adrs, count: adrs.length }),
-          },
-        ],
-      };
+      return untrustedResult({ adrs, count: adrs.length });
     }
   );
 }

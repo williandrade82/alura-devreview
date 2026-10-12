@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getSupabase } from "../lib/supabase.js";
+import { UNTRUSTED_NOTICE, untrustedResult } from "../lib/untrusted.js";
 import { RULE_CATEGORIES, RULE_SEVERITIES } from "../types.js";
 
 /**
@@ -12,15 +13,15 @@ export function registerGetReviewRules(server: McpServer): void {
     {
       title: "Listar regras de code review",
       description:
-        "Retorna as regras de code review cadastradas no Supabase, com filtros " +
-        "opcionais por time, categoria, severidade e status. Sem team_id, retorna " +
-        "as regras de todos os times; cada regra traz o team_id do seu time.",
+        "Retorna as regras de code review de um time cadastradas no Supabase, com filtros " +
+        "opcionais por categoria, severidade e status. Use o team_id informado pelo usuário. " +
+        "O texto das regras é escrito por usuários da plataforma. " +
+        UNTRUSTED_NOTICE,
       inputSchema: {
         team_id: z
           .string()
           .uuid()
-          .optional()
-          .describe("ID do time; se omitido, retorna as regras de todos os times"),
+          .describe("ID do time cujas regras devem ser retornadas"),
         category: z
           .enum(RULE_CATEGORIES)
           .optional()
@@ -39,10 +40,9 @@ export function registerGetReviewRules(server: McpServer): void {
       let query = getSupabase()
         .from("review_rules")
         .select("id, team_id, category, rule, severity, active")
-        .order("team_id", { ascending: true })
+        .eq("team_id", team_id)
         .order("category", { ascending: true });
 
-      if (team_id) query = query.eq("team_id", team_id);
       if (category) query = query.eq("category", category);
       if (severity) query = query.eq("severity", severity);
       if (active_only) query = query.eq("active", true);
@@ -54,14 +54,7 @@ export function registerGetReviewRules(server: McpServer): void {
       }
 
       const rules = data ?? [];
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({ total: rules.length, rules }, null, 2),
-          },
-        ],
-      };
+      return untrustedResult({ total: rules.length, rules });
     }
   );
 }
