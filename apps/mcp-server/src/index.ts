@@ -9,11 +9,17 @@ import { registerAdrTools } from "./tools/adr.js";
 import { registerMetricsTools } from "./tools/metrics.js";
 import { registerRecordReview } from "./tools/record-review.js";
 import { registerGithubPrTools } from "./tools/github-pr.js";
+import { registerReviewPrompt } from "./prompts/review-pull-request.js";
+import { SERVER_INSTRUCTIONS } from "./lib/security-prompt.js";
 
 async function main(): Promise<void> {
   loadEnv();
 
-  const server = new McpServer({ name: "devreview", version: "1.0.0" });
+  const server = new McpServer(
+    { name: "devreview", version: "1.0.0" },
+    { instructions: SERVER_INSTRUCTIONS }
+  );
+  registerReviewPrompt(server);
 
   registerGetReviewRules(server);
   registerAdrTools(server);
