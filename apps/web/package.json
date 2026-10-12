@@ -6,7 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "eslint src",
+    "format": "prettier --write src/components/stats src/lib/stats.ts src/lib/stats.test.ts src/lib/statsGuards.ts src/lib/statsGuards.test.ts src/pages/StatsPage.tsx src/store/slices/statsSlice.ts",
+    "format:check": "prettier --check src/components/stats src/lib/stats.ts src/lib/stats.test.ts src/lib/statsGuards.ts src/lib/statsGuards.test.ts src/pages/StatsPage.tsx src/store/slices/statsSlice.ts",
+    "check": "npm run lint && npm run format:check && npm run test && npm run build"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -29,13 +34,20 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.20",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^15.15.0",
     "postcss": "^8.4.49",
+    "prettier": "^3.9.10",
     "tailwindcss": "^3.4.15",
     "typescript": "^5.6.3",
-    "vite": "^5.4.10"
+    "typescript-eslint": "^8.71.2",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.9"
   }
 }

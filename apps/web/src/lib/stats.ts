@@ -43,8 +43,7 @@ export function readiness(matrix: Record<Recommendation, OutcomeCounts>): Readin
   const falseApprovals = matrix.approve.changes_requested;
   const falseApproveRate = decidedApprovals === 0 ? null : falseApprovals / decidedApprovals;
   const enoughData = decidedApprovals >= AUTO_APPROVE_MIN_DECIDED;
-  const lowFalseApproveRate =
-    falseApproveRate !== null && falseApproveRate <= AUTO_APPROVE_MAX_FALSE_APPROVE_RATE;
+  const lowFalseApproveRate = falseApproveRate !== null && falseApproveRate <= AUTO_APPROVE_MAX_FALSE_APPROVE_RATE;
   return {
     decidedApprovals,
     falseApprovals,

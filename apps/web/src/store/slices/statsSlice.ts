@@ -1,6 +1,14 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { getSupabase } from "@/lib/supabase";
 import { bucketForPeriod, DEFAULT_STATS_PERIOD } from "@/lib/stats";
+import {
+  isKeywordTrends,
+  isRecommendationStats,
+  isReferenceStats,
+  isRepoStats,
+  isStatsOverview,
+  isTimeseries,
+} from "@/lib/statsGuards";
 import type {
   KeywordTrend,
   RecommendationStats,
@@ -24,13 +32,28 @@ interface RpcResult {
   error: { message: string } | null;
 }
 
-/** Dado de uma seção, ou null se a consulta falhou (o erro vai para `errors`, só dessa seção). */
-function pick<T>(section: StatsSection, result: RpcResult, errors: StatsSectionErrors): T | null {
+const UNEXPECTED_SHAPE = "resposta em formato inesperado (a migração do banco pode estar desatualizada)";
+
+/**
+ * Dado de uma seção, ou null se a consulta falhou ou a resposta não tem o formato esperado
+ * (o erro vai para `errors`, só dessa seção). O formato é conferido pela guarda, em vez de só
+ * assertado com `as`, para que o tipo seja de fato um contrato.
+ */
+function pick<T>(
+  section: StatsSection,
+  result: RpcResult,
+  errors: StatsSectionErrors,
+  isValid: (data: unknown) => data is T
+): T | null {
   if (result.error) {
     errors[section] = result.error.message;
     return null;
   }
-  return result.data as T;
+  if (!isValid(result.data)) {
+    errors[section] = UNEXPECTED_SHAPE;
+    return null;
+  }
+  return result.data;
 }
 
 /**
@@ -61,12 +84,12 @@ export const fetchStats = createAsyncThunk(
     ]);
     const errors: StatsSectionErrors = {};
     return {
-      overview: pick<StatsOverview>("overview", overview, errors),
-      references: pick<ReferenceStats>("references", references, errors),
-      calibration: pick<RecommendationStats>("calibration", calibration, errors),
-      timeseries: pick<TimeseriesPoint[]>("timeseries", timeseries, errors),
-      themes: pick<KeywordTrend[]>("themes", themes, errors),
-      repos: pick<RepoStats>("repos", repos, errors),
+      overview: pick("overview", overview, errors, isStatsOverview),
+      references: pick("references", references, errors, isReferenceStats),
+      calibration: pick("calibration", calibration, errors, isRecommendationStats),
+      timeseries: pick("timeseries", timeseries, errors, isTimeseries),
+      themes: pick("themes", themes, errors, isKeywordTrends),
+      repos: pick("repos", repos, errors, isRepoStats),
       errors,
     };
   }

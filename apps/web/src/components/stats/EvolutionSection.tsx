@@ -12,6 +12,8 @@ interface EvolutionSectionProps {
 export function EvolutionSection({ days, series }: EvolutionSectionProps) {
   const bucket = bucketForPeriod(days);
   const unit = bucket === "day" ? "dia" : "semana";
+  // O artigo acompanha o gênero da unidade ("do dia" / "da semana").
+  const startOfUnit = bucket === "day" ? "do dia" : "da semana";
   const hasReviews = series.some((p) => p.reviews > 0);
 
   return (
@@ -30,19 +32,27 @@ export function EvolutionSection({ days, series }: EvolutionSectionProps) {
           <ColumnChart
             title="Revisões"
             description={`Quantidade de PRs revisados por ${unit}`}
-            points={series.map((p) => ({ label: formatBucket(p.bucket_start), value: p.reviews, partial: p.in_progress }))}
+            points={series.map((p) => ({
+              label: formatBucket(p.bucket_start),
+              value: p.reviews,
+              partial: p.in_progress,
+            }))}
           />
           <ColumnChart
             title="Média de issues"
             description={`Erros e avisos por PR, por ${unit} (sem coluna = sem revisões)`}
             color="bg-amber-500"
-            points={series.map((p) => ({ label: formatBucket(p.bucket_start), value: p.avg_issues, partial: p.in_progress }))}
+            points={series.map((p) => ({
+              label: formatBucket(p.bucket_start),
+              value: p.avg_issues,
+              partial: p.in_progress,
+            }))}
           />
         </div>
       )}
       {hasReviews && (
         <p className="text-xs text-gray-500">
-          Os períodos são completos: o primeiro começa no início do {unit} em que a janela começa, então a soma das
+          Os períodos são completos: o primeiro começa no início {startOfUnit} em que a janela começa, então a soma das
           colunas pode passar do total de revisões da Visão geral.
         </p>
       )}

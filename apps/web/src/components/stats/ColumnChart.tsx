@@ -37,11 +37,7 @@ export function ColumnChart({ title, description, points, color = "bg-indigo-500
             {points.map((p) => {
               const ratio = max === 0 || p.value === null ? 0 : p.value / max;
               return (
-                <div
-                  key={p.label}
-                  className="flex h-full min-w-0 flex-1 flex-col justify-end"
-                  title={label(p)}
-                >
+                <div key={p.label} className="flex h-full min-w-0 flex-1 flex-col justify-end" title={label(p)}>
                   {p.value === null || p.value === 0 ? (
                     <div className="h-px w-full bg-gray-700" />
                   ) : (

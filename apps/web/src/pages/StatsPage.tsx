@@ -9,13 +9,7 @@ import { ReposSection } from "@/components/stats/ReposSection";
 import { SectionError } from "@/components/stats/SectionError";
 import { ThemesSection } from "@/components/stats/ThemesSection";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchStats, setStatsPeriod } from "@/store/slices/statsSlice";
 import { STATS_PERIODS } from "@/lib/stats";
@@ -28,8 +22,19 @@ import { STATS_PERIODS } from "@/lib/stats";
 export function StatsPage() {
   const dispatch = useAppDispatch();
   const teamId = useAppSelector((s) => s.auth.teamId);
-  const { days, dataDays, overview, references, calibration, timeseries, themes, repos, sectionErrors, loading, error } =
-    useAppSelector((s) => s.stats);
+  const {
+    days,
+    dataDays,
+    overview,
+    references,
+    calibration,
+    timeseries,
+    themes,
+    repos,
+    sectionErrors,
+    loading,
+    error,
+  } = useAppSelector((s) => s.stats);
   // Os títulos seguem o período dos dados exibidos, não o recém-selecionado (que ainda está carregando).
   const shownDays = dataDays ?? days;
 

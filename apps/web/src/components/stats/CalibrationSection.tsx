@@ -1,14 +1,7 @@
 import { CheckCircle2, Sparkles, Target, TriangleAlert } from "lucide-react";
 import { StatCard } from "@/components/shared/StatCard";
 import { SectionTitle } from "@/components/stats/SectionTitle";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   AUTO_APPROVE_MAX_FALSE_APPROVE_RATE,
   AUTO_APPROVE_MIN_DECIDED,
@@ -63,8 +56,8 @@ export function CalibrationSection({ calibration }: CalibrationSectionProps) {
       />
       {calibration.total === 0 ? (
         <p className="rounded-lg border border-gray-800 bg-gray-900 p-5 text-sm text-gray-400">
-          Ainda não há recomendações no período. Elas são gravadas pelo <code>record_review</code> a cada revisão;
-          o desfecho humano é preenchido pela tool <code>sync_review_outcomes</code>.
+          Ainda não há recomendações no período. Elas são gravadas pelo <code>record_review</code> a cada revisão; o
+          desfecho humano é preenchido pela tool <code>sync_review_outcomes</code>.
         </p>
       ) : (
         <>
@@ -121,10 +114,14 @@ export function CalibrationSection({ calibration }: CalibrationSectionProps) {
                   return (
                     <TableRow key={rec} className="border-gray-800 hover:bg-gray-800/40">
                       <TableCell className="font-medium text-white">{RECOMMENDATION_LABEL[rec]}</TableCell>
-                      <TableCell className={cn("text-right", rec === "request_changes" && row.approved > 0 && "text-amber-400")}>
+                      <TableCell
+                        className={cn("text-right", rec === "request_changes" && row.approved > 0 && "text-amber-400")}
+                      >
                         {row.approved}
                       </TableCell>
-                      <TableCell className={cn("text-right", rec === "approve" && row.changes_requested > 0 && "text-red-400")}>
+                      <TableCell
+                        className={cn("text-right", rec === "approve" && row.changes_requested > 0 && "text-red-400")}
+                      >
                         {row.changes_requested}
                       </TableCell>
                       <TableCell className="text-right text-gray-400">{row.none}</TableCell>
@@ -151,9 +148,7 @@ export function CalibrationSection({ calibration }: CalibrationSectionProps) {
                 <TableBody>
                   {calibration.by_confidence.map((c) => (
                     <TableRow key={c.confidence} className="border-gray-800 hover:bg-gray-800/40">
-                      <TableCell className="text-white">
-                        {CONFIDENCE_LABEL[c.confidence] ?? c.confidence}
-                      </TableCell>
+                      <TableCell className="text-white">{CONFIDENCE_LABEL[c.confidence] ?? c.confidence}</TableCell>
                       <TableCell className="text-right">{c.total}</TableCell>
                       <TableCell className="text-right">{c.judged}</TableCell>
                       <TableCell className="text-right">{percent(c.agree, c.judged)}</TableCell>
@@ -169,8 +164,8 @@ export function CalibrationSection({ calibration }: CalibrationSectionProps) {
             <div className="rounded-lg border border-gray-800 bg-gray-900 p-5">
               <h3 className="text-sm font-semibold text-white">Prontidão para aprovação automática</h3>
               <p className="mt-1 text-xs text-gray-500">
-                Indicativo: nada é aprovado automaticamente. Considera só as recomendações "aprovar" já
-                decididas por humanos.
+                Indicativo: nada é aprovado automaticamente. Considera só as recomendações "aprovar" já decididas por
+                humanos.
               </p>
               <ul className="mt-4 space-y-2">
                 <CriterionRow ok={calibrationReadiness.enoughData}>

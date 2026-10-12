@@ -1,12 +1,5 @@
 import { SectionTitle } from "@/components/stats/SectionTitle";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { RepoStats, RuleCategory } from "@/types";
 
 const CATEGORIES: { key: RuleCategory; label: string }[] = [
@@ -67,7 +60,9 @@ export function ReposSection({ days, repos }: ReposSectionProps) {
                         <TableCell
                           key={c.key}
                           className="text-right"
-                          style={n > 0 ? { backgroundColor: `rgba(99, 102, 241, ${0.1 + 0.5 * (n / maxCell)})` } : undefined}
+                          style={
+                            n > 0 ? { backgroundColor: `rgba(99, 102, 241, ${0.1 + 0.5 * (n / maxCell)})` } : undefined
+                          }
                         >
                           {n}
                         </TableCell>
