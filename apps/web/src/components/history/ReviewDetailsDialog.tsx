@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { CategoryBadge } from "@/components/shared/CategoryBadge";
 import { SeverityBadge } from "@/components/shared/SeverityBadge";
 import { SuccessBadge } from "@/components/shared/SuccessBadge";
+import { RuleReference } from "@/components/history/RuleReference";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { issueSeverity } from "@/store/selectors";
+import { fetchRules } from "@/store/slices/rulesSlice";
 import {
   fetchFindings,
   updateFindingStatus,
@@ -114,9 +116,7 @@ function FindingCard({
 
       <p className="text-sm text-gray-200">{finding.message}</p>
 
-      {finding.rule_text && (
-        <p className="text-xs text-gray-500">Regra: {finding.rule_text}</p>
-      )}
+      <RuleReference finding={finding} />
       {finding.suggestion && (
         <p className="text-xs text-gray-400">
           <span className="font-medium text-gray-300">Sugestão:</span>{" "}
@@ -148,11 +148,17 @@ export function ReviewDetailsDialog({
     review ? s.history.findingsByReview[review.id] : undefined
   );
   const actionError = useAppSelector((s) => s.history.findingActionError);
+  const teamId = useAppSelector((s) => s.auth.teamId);
   const reviewId = review?.id;
 
   useEffect(() => {
     if (reviewId) dispatch(fetchFindings(reviewId));
   }, [dispatch, reviewId]);
+
+  // Os detalhes da regra (hover) vêm das regras do time; garante que estejam carregadas.
+  useEffect(() => {
+    if (reviewId && teamId) dispatch(fetchRules(teamId));
+  }, [dispatch, reviewId, teamId]);
 
   const grouped = useMemo(
     () =>

@@ -11,8 +11,18 @@ export type AuthStatus =
   | "no-membership"
   | "ready";
 
+/** Chave do nome de exibição em user_metadata do Supabase Auth. */
+const NAME_METADATA_KEY = "full_name";
+
+/** Nome de exibição guardado no metadata do usuário (`null` se não definiu). */
+function readName(user: { user_metadata?: Record<string, unknown> }): string | null {
+  const value = user.user_metadata?.[NAME_METADATA_KEY];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 interface Membership {
   email: string;
+  name: string | null;
   isAdmin: boolean;
   /** Papel do usuário em cada time onde ele está aprovado. */
   memberships: Record<string, TeamRole>;
@@ -27,7 +37,8 @@ interface Membership {
  */
 async function loadMembership(
   userId: string,
-  email: string
+  email: string,
+  name: string | null
 ): Promise<Membership> {
   const supabase = getSupabase();
   const [members, admin, teams] = await Promise.all([
@@ -52,6 +63,7 @@ async function loadMembership(
   }
   return {
     email,
+    name,
     isAdmin: (admin.data ?? []).length > 0,
     memberships,
     teams: (teams.data ?? []) as Team[],
@@ -69,7 +81,7 @@ export const restoreSession = createAsyncThunk(
     if (error) throw new Error(error.message);
     const user = data.session?.user;
     if (!user) return null;
-    return loadMembership(user.id, user.email ?? "");
+    return loadMembership(user.id, user.email ?? "", readName(user));
   }
 );
 
@@ -82,7 +94,7 @@ export const signIn = createAsyncThunk(
       password,
     });
     if (error) throw new Error(error.message);
-    return loadMembership(data.user.id, data.user.email ?? email);
+    return loadMembership(data.user.id, data.user.email ?? email, readName(data.user));
   }
 );
 
@@ -117,7 +129,7 @@ export const signUp = createAsyncThunk(
     if (error) throw new Error(error.message);
     // Sem sessão = confirmação de e-mail pendente.
     if (!data.session || !data.user) return { membership: null };
-    return { membership: await loadMembership(data.user.id, email) };
+    return { membership: await loadMembership(data.user.id, email, readName(data.user)) };
   }
 );
 
@@ -141,7 +153,51 @@ export const updatePassword = createAsyncThunk(
   async (password: string) => {
     const { data, error } = await getSupabase().auth.updateUser({ password });
     if (error) throw new Error(error.message);
-    return loadMembership(data.user.id, data.user.email ?? "");
+    return loadMembership(data.user.id, data.user.email ?? "", readName(data.user));
+  }
+);
+
+/**
+ * Define o nome de exibição do usuário logado (vazio remove o nome).
+ * Fica no metadata do Supabase Auth; o e-mail continua sendo o identificador.
+ */
+export const updateProfileName = createAsyncThunk(
+  "auth/updateProfileName",
+  async (name: string): Promise<string | null> => {
+    const trimmed = name.trim();
+    const { data, error } = await getSupabase().auth.updateUser({
+      data: { [NAME_METADATA_KEY]: trimmed },
+    });
+    if (error) throw new Error(error.message);
+    return readName(data.user);
+  }
+);
+
+/**
+ * Troca a senha do usuário logado. Confirma a senha atual antes, para que uma
+ * sessão esquecida aberta não baste para trocar a senha.
+ */
+export const changePassword = createAsyncThunk(
+  "auth/changePassword",
+  async ({
+    currentPassword,
+    newPassword,
+  }: {
+    currentPassword: string;
+    newPassword: string;
+  }) => {
+    const supabase = getSupabase();
+    const { data: current, error: userError } = await supabase.auth.getUser();
+    if (userError || !current.user?.email) {
+      throw new Error("Sessão expirada. Entre novamente.");
+    }
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: current.user.email,
+      password: currentPassword,
+    });
+    if (verifyError) throw new Error("A senha atual está incorreta.");
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw new Error(error.message);
   }
 );
 
@@ -153,6 +209,8 @@ export const signOut = createAsyncThunk("auth/signOut", async () => {
 interface AuthState {
   status: AuthStatus;
   email: string | null;
+  /** Nome de exibição (`null` enquanto o usuário não definir um). */
+  name: string | null;
   teamId: string | null;
   /** Papel do usuário no time ativo (`null` para um admin fora do time). */
   role: TeamRole | null;
@@ -173,6 +231,7 @@ interface AuthState {
 const initialState: AuthState = {
   status: "loading",
   email: null,
+  name: null,
   teamId: null,
   role: null,
   isAdmin: false,
@@ -194,6 +253,7 @@ function applyMembership(state: AuthState, m: Membership | null) {
     Object.assign(state, {
       status: "unauthenticated",
       email: null,
+      name: null,
       teamId: null,
       role: null,
       isAdmin: false,
@@ -202,6 +262,7 @@ function applyMembership(state: AuthState, m: Membership | null) {
     return;
   }
   state.email = m.email;
+  state.name = m.name;
   state.isAdmin = m.isAdmin;
   state.memberships = m.memberships;
   state.teams = m.teams;
@@ -292,6 +353,9 @@ const authSlice = createSlice({
         state.submitting = false;
         state.error =
           action.error.message ?? "Não foi possível alterar a senha.";
+      })
+      .addCase(updateProfileName.fulfilled, (state, action) => {
+        state.name = action.payload;
       })
       .addCase(restoreSession.rejected, (state, action) => {
         state.status = "unauthenticated";
