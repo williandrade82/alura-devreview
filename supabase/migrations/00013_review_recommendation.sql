@@ -17,6 +17,14 @@
 -- ---------------------------------------------------------------------------
 -- 1. Colunas
 -- ---------------------------------------------------------------------------
+-- Reexecutável: constraints antigas são removidas antes de recriadas.
+alter table public.review_history
+  drop constraint if exists review_history_recommendation_check,
+  drop constraint if exists review_history_recommendation_confidence_check,
+  drop constraint if exists review_history_recommendation_reason_length,
+  drop constraint if exists review_history_outcome_decision_check,
+  drop constraint if exists review_history_outcome_pr_state_check;
+
 alter table public.review_history
   add column if not exists recommendation            text,
   add column if not exists recommendation_reason     text,
@@ -43,6 +51,8 @@ create index if not exists review_history_recommendation_idx
 -- 2. Gravação (substitui a função de 7 parâmetros)
 -- ---------------------------------------------------------------------------
 drop function if exists public.record_review_with_findings(uuid, text, text, text, text, text, jsonb, jsonb);
+-- Versão intermediária (recomendação sem p_keywords), se tiver sido aplicada antes.
+drop function if exists public.record_review_with_findings(uuid, text, text, text, text, text, jsonb, text, text, text, boolean);
 
 create or replace function public.record_review_with_findings(
   p_team_id             uuid,
