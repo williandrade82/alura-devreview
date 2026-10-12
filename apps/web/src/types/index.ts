@@ -54,6 +54,15 @@ export interface Adr {
   created_at: string;
 }
 
+export interface ReviewKeyword {
+  id: string;
+  review_id: string;
+  keyword: string;
+  severity: RuleSeverity;
+  position: number;
+  reviewed_at: string;
+}
+
 export interface ReviewFinding {
   id: string;
   review_id: string;
