@@ -149,16 +149,19 @@ export function ReviewDetailsDialog({
   );
   const actionError = useAppSelector((s) => s.history.findingActionError);
   const teamId = useAppSelector((s) => s.auth.teamId);
+  const rulesLoadedForTeam = useAppSelector((s) =>
+    s.rules.items.some((r) => r.team_id === teamId)
+  );
   const reviewId = review?.id;
 
   useEffect(() => {
     if (reviewId) dispatch(fetchFindings(reviewId));
   }, [dispatch, reviewId]);
 
-  // Os detalhes da regra (hover) vêm das regras do time; garante que estejam carregadas.
+  // Os detalhes da regra (hover) vêm das regras do time: só busca se ainda não estiverem carregadas.
   useEffect(() => {
-    if (reviewId && teamId) dispatch(fetchRules(teamId));
-  }, [dispatch, reviewId, teamId]);
+    if (reviewId && teamId && !rulesLoadedForTeam) dispatch(fetchRules(teamId));
+  }, [dispatch, reviewId, teamId, rulesLoadedForTeam]);
 
   const grouped = useMemo(
     () =>

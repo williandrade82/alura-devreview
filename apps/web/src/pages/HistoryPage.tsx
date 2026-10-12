@@ -120,7 +120,17 @@ export function HistoryPage() {
               {filtered.map((review) => (
                 <TableRow
                   key={review.id}
-                  className="border-gray-800 hover:bg-gray-800/50"
+                  tabIndex={0}
+                  onClick={() => setSelectedId(review.id)}
+                  onKeyDown={(e) => {
+                    // Só quando o foco está na própria linha (não em links dentro dela).
+                    if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      setSelectedId(review.id);
+                    }
+                  }}
+                  title="Ver detalhes"
+                  className="cursor-pointer border-gray-800 hover:bg-gray-800/50 focus-visible:bg-gray-800/50 focus-visible:outline-none"
                 >
                   <TableCell className="font-mono text-sm font-medium text-white">
                     #{review.pr_number}
@@ -150,17 +160,13 @@ export function HistoryPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        title="Ver detalhes"
-                        aria-label={`Ver detalhes da revisão do PR #${review.pr_number}`}
-                        onClick={() => setSelectedId(review.id)}
-                        className="inline-flex items-center text-gray-500 transition-colors hover:text-indigo-400"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </button>
+                      <Eye
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5 text-gray-500"
+                      />
                       <a
                         href={review.pr_url}
+                        onClick={(e) => e.stopPropagation()}
                         target="_blank"
                         rel="noopener noreferrer"
                         title="Abrir PR no GitHub"
