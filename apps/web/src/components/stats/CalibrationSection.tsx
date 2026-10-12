@@ -34,27 +34,27 @@ const CONFIDENCE_LABEL: Record<string, string> = {
 
 function CriterionRow({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return (
-  <li className="flex items-start gap-2 text-sm">
-    {ok ? (
-      <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-400" aria-label="Atendido" />
-    ) : (
-      <TriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-400" aria-label="Não atendido" />
-    )}
-    <span className="text-gray-300">{children}</span>
-  </li>
-);
+    <li className="flex items-start gap-2 text-sm">
+      {ok ? (
+        <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-400" aria-label="Atendido" />
+      ) : (
+        <TriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-400" aria-label="Não atendido" />
+      )}
+      <span className="text-gray-300">{children}</span>
+    </li>
+  );
 }
 
 interface CalibrationSectionProps {
-calibration: RecommendationStats;
+  calibration: RecommendationStats;
 }
 
 /** Calibração do modelo: recomendação (modo sombra) contra a decisão humana no GitHub. */
 export function CalibrationSection({ calibration }: CalibrationSectionProps) {
-const calibrationReadiness = readiness(calibration.matrix);
-const agreement = agreementCounts(calibration.matrix);
+  const calibrationReadiness = readiness(calibration.matrix);
+  const agreement = agreementCounts(calibration.matrix);
 
-return (
+  return (
     <section className="space-y-4" aria-labelledby="stats-calibration">
       <SectionTitle
         id="stats-calibration"

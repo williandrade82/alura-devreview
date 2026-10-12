@@ -75,7 +75,13 @@ export const fetchStats = createAsyncThunk(
 interface StatsState {
   /** Time dos dados carregados: ao trocar de time, os dados do anterior são descartados. */
   teamId: string | null;
+  /** Período selecionado na tela (em dias). */
   days: number;
+  /**
+   * Período (em dias) dos dados que estão na tela. Os títulos usam este valor, e não `days`,
+   * enquanto a resposta do período recém-selecionado não chega.
+   */
+  dataDays: number | null;
   overview: StatsOverview | null;
   references: ReferenceStats | null;
   calibration: RecommendationStats | null;
@@ -94,6 +100,7 @@ interface StatsState {
 const initialState: StatsState = {
   teamId: null,
   days: DEFAULT_STATS_PERIOD,
+  dataDays: null,
   overview: null,
   references: null,
   calibration: null,
@@ -126,6 +133,7 @@ const statsSlice = createSlice({
           state.themes = null;
           state.repos = null;
           state.sectionErrors = {};
+          state.dataDays = null;
         }
         state.loading = true;
         state.error = null;
@@ -135,6 +143,7 @@ const statsSlice = createSlice({
         if (state.requestId !== action.meta.requestId) return;
         const { errors, ...data } = action.payload;
         Object.assign(state, data);
+        state.dataDays = action.meta.arg.days;
         state.sectionErrors = errors;
         state.loading = false;
       })

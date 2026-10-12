@@ -40,6 +40,12 @@ export function EvolutionSection({ days, series }: EvolutionSectionProps) {
           />
         </div>
       )}
+      {hasReviews && (
+        <p className="text-xs text-gray-500">
+          Os períodos são completos: o primeiro começa no início do {unit} em que a janela começa, então a soma das
+          colunas pode passar do total de revisões da Visão geral.
+        </p>
+      )}
     </section>
   );
 }

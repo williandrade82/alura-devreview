@@ -28,8 +28,10 @@ import { STATS_PERIODS } from "@/lib/stats";
 export function StatsPage() {
   const dispatch = useAppDispatch();
   const teamId = useAppSelector((s) => s.auth.teamId);
-  const { days, overview, references, calibration, timeseries, themes, repos, sectionErrors, loading, error } =
+  const { days, dataDays, overview, references, calibration, timeseries, themes, repos, sectionErrors, loading, error } =
     useAppSelector((s) => s.stats);
+  // Os títulos seguem o período dos dados exibidos, não o recém-selecionado (que ainda está carregando).
+  const shownDays = dataDays ?? days;
 
   useEffect(() => {
     if (teamId) dispatch(fetchStats({ teamId, days }));
@@ -86,17 +88,17 @@ export function StatsPage() {
         ) : (
           <>
             {overview ? (
-              <OverviewSection days={days} overview={overview} />
+              <OverviewSection days={shownDays} overview={overview} />
             ) : (
               <SectionError title="Visão geral" message={sectionErrors.overview} />
             )}
             {timeseries ? (
-              <EvolutionSection days={days} series={timeseries} />
+              <EvolutionSection days={shownDays} series={timeseries} />
             ) : (
               <SectionError title="Evolução no tempo" message={sectionErrors.timeseries} />
             )}
             {themes ? (
-              <ThemesSection days={days} themes={themes} />
+              <ThemesSection days={shownDays} themes={themes} />
             ) : (
               <SectionError title="Temas" message={sectionErrors.themes} />
             )}
@@ -106,7 +108,7 @@ export function StatsPage() {
               <SectionError title="Regras e ADRs" message={sectionErrors.references} />
             )}
             {repos ? (
-              <ReposSection days={days} repos={repos} />
+              <ReposSection days={shownDays} repos={repos} />
             ) : (
               <SectionError title="Repositórios" message={sectionErrors.repos} />
             )}
