@@ -6,6 +6,7 @@
     "dev": "npm -w apps/web run dev",
     "build": "npm -w apps/web run build",
     "mcp:build": "npm -w apps/mcp-server run build",
+    "mcp:dev": "npm -w apps/mcp-server run dev",
     "mcp:inspector": "npm -w apps/mcp-server run inspector"
   }
 }
