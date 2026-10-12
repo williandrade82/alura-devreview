@@ -42,6 +42,13 @@ export interface ReviewHistory {
   commit_sha: string | null;
   pr_title: string | null;
   reviewer: string | null;
+  /** Recomendação de ação do modelo (modo sombra; nula em revisões antigas). */
+  recommendation: Recommendation | null;
+  recommendation_reason: string | null;
+  recommendation_confidence: "low" | "medium" | "high" | null;
+  injection_suspected: boolean;
+  outcome_decision: HumanOutcome | null;
+  outcome_pr_state: "open" | "closed" | "merged" | null;
 }
 
 export interface Adr {
@@ -80,4 +87,53 @@ export interface ReviewFinding {
   code_snippet: string | null;
   status: FindingStatus;
   resolved_at: string | null;
+}
+
+export type Recommendation = "approve" | "request_changes" | "comment";
+/** Decisão humana no GitHub; "none" = PR sem aprovação nem pedido de mudança. */
+export type HumanOutcome = "approved" | "changes_requested" | "none";
+
+/** Resultado de get_team_stats_overview. */
+export interface StatsOverview {
+  reviews_total: number;
+  reviews_clean: number;
+  avg_issues: number;
+  injection_suspected: number;
+  findings_total: number;
+  findings_by_severity: Record<RuleSeverity, number>;
+  findings_by_status: Record<FindingStatus, number>;
+}
+
+/** Resultado de get_team_reference_stats. */
+export interface ReferenceStats {
+  rules: { rule_id: string; rule: string | null; total: number; errors: number; dismissed: number }[];
+  adrs: { adr_id: string; title: string | null; total: number }[];
+  never_triggered: { id: string; rule: string; category: RuleCategory }[];
+  /** Total real de regras que nunca dispararam (a lista acima vem cortada em 20). */
+  never_triggered_total: number;
+}
+
+/** Revisões de uma recomendação por desfecho humano (pending = ainda não sincronizado). */
+export interface OutcomeCounts {
+  approved: number;
+  changes_requested: number;
+  none: number;
+  pending: number;
+}
+
+/** Resultado de get_team_recommendation_stats. */
+export interface RecommendationStats {
+  total: number;
+  with_human_outcome: number;
+  injection_suspected: number;
+  by_recommendation: Record<Recommendation, number>;
+  agreement: {
+    agree: number;
+    false_approve: number;
+    false_block: number;
+    comment_with_outcome: number;
+  };
+  matrix: Record<Recommendation, OutcomeCounts>;
+  /** judged = recomendações approve/request_changes já decididas por humanos (base da concordância). */
+  by_confidence: { confidence: string; total: number; judged: number; agree: number }[];
 }

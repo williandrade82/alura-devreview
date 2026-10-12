@@ -15,6 +15,10 @@ const AdrsPage = lazy(() =>
   import("@/pages/AdrsPage").then((m) => ({ default: m.AdrsPage }))
 );
 
+const StatsPage = lazy(() =>
+  import("@/pages/StatsPage").then((m) => ({ default: m.StatsPage }))
+);
+
 const MembersPage = lazy(() =>
   import("@/pages/MembersPage").then((m) => ({ default: m.MembersPage }))
 );
@@ -34,6 +38,7 @@ function App() {
             <Route path="/regras" element={<RulesPage />} />
             <Route path="/historico" element={<HistoryPage />} />
             <Route path="/adrs" element={<AdrsPage />} />
+            <Route path="/estatisticas" element={<StatsPage />} />
             <Route path="/membros" element={<MembersPage />} />
             <Route path="/times" element={<TeamsPage />} />
           </Routes>

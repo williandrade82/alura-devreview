@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, ListChecks, History, BookOpen, GitPullRequest, LogOut, Users, Building2, UserCog } from "lucide-react";
+import { LayoutDashboard, ListChecks, History, BookOpen, BarChart3, GitPullRequest, LogOut, Users, Building2, UserCog } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -21,6 +21,7 @@ const navItems = [
   { to: "/", label: "Início", icon: LayoutDashboard, end: true },
   { to: "/regras", label: "Regras de Review", icon: ListChecks, end: false },
   { to: "/historico", label: "Histórico", icon: History, end: false },
+  { to: "/estatisticas", label: "Estatísticas", icon: BarChart3, end: false },
   { to: "/adrs", label: "ADRs", icon: BookOpen, end: false },
 ];
 
